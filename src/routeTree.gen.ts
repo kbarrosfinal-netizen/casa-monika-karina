@@ -15,6 +15,7 @@ import { Route as InstalarRouteImport } from './routes/instalar'
 import { Route as FinancasRouteImport } from './routes/financas'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NotasFotografarRouteImport } from './routes/notas.fotografar'
 import { Route as ComprasMercadoRouteImport } from './routes/compras.mercado'
 
 const NotasRoute = NotasRouteImport.update({
@@ -47,6 +48,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotasFotografarRoute = NotasFotografarRouteImport.update({
+  id: '/fotografar',
+  path: '/fotografar',
+  getParentRoute: () => NotasRoute,
+} as any)
 const ComprasMercadoRoute = ComprasMercadoRouteImport.update({
   id: '/mercado',
   path: '/mercado',
@@ -59,8 +65,9 @@ export interface FileRoutesByFullPath {
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRoute
+  '/notas': typeof NotasRouteWithChildren
   '/compras/mercado': typeof ComprasMercadoRoute
+  '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +75,9 @@ export interface FileRoutesByTo {
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRoute
+  '/notas': typeof NotasRouteWithChildren
   '/compras/mercado': typeof ComprasMercadoRoute
+  '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +86,9 @@ export interface FileRoutesById {
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRoute
+  '/notas': typeof NotasRouteWithChildren
   '/compras/mercado': typeof ComprasMercadoRoute
+  '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/notas'
     | '/compras/mercado'
+    | '/notas/fotografar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/notas'
     | '/compras/mercado'
+    | '/notas/fotografar'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/mais'
     | '/notas'
     | '/compras/mercado'
+    | '/notas/fotografar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,7 +129,7 @@ export interface RootRouteChildren {
   FinancasRoute: typeof FinancasRoute
   InstalarRoute: typeof InstalarRoute
   MaisRoute: typeof MaisRoute
-  NotasRoute: typeof NotasRoute
+  NotasRoute: typeof NotasRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notas/fotografar': {
+      id: '/notas/fotografar'
+      path: '/fotografar'
+      fullPath: '/notas/fotografar'
+      preLoaderRoute: typeof NotasFotografarRouteImport
+      parentRoute: typeof NotasRoute
+    }
     '/compras/mercado': {
       id: '/compras/mercado'
       path: '/mercado'
@@ -185,13 +204,23 @@ const ComprasRouteChildren: ComprasRouteChildren = {
 const ComprasRouteWithChildren =
   ComprasRoute._addFileChildren(ComprasRouteChildren)
 
+interface NotasRouteChildren {
+  NotasFotografarRoute: typeof NotasFotografarRoute
+}
+
+const NotasRouteChildren: NotasRouteChildren = {
+  NotasFotografarRoute: NotasFotografarRoute,
+}
+
+const NotasRouteWithChildren = NotasRoute._addFileChildren(NotasRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComprasRoute: ComprasRouteWithChildren,
   FinancasRoute: FinancasRoute,
   InstalarRoute: InstalarRoute,
   MaisRoute: MaisRoute,
-  NotasRoute: NotasRoute,
+  NotasRoute: NotasRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
