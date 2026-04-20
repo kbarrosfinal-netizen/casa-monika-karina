@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useProducts, useCategories } from '@/hooks/useProducts'
 import { useShoppingList, useToggleMissing } from '@/hooks/useShoppingList'
@@ -135,15 +135,14 @@ function ComprasPage() {
       {tab === 'falta' && (
         <>
           {missingCount > 0 && (
-            <button
-              type="button"
+            <Link
+              to="/compras/mercado"
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold shadow-md"
               style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)' }}
-              onClick={() => alert('Em breve: Modo mercado (Task 2.6)')}
             >
               <ShoppingBag className="w-5 h-5" />
               Ver lista do mercado
-            </button>
+            </Link>
           )}
 
           <CategoryGrid
