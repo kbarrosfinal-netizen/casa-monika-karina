@@ -15,6 +15,7 @@ import { Route as InstalarRouteImport } from './routes/instalar'
 import { Route as FinancasRouteImport } from './routes/financas'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComprasMercadoRouteImport } from './routes/compras.mercado'
 
 const NotasRoute = NotasRouteImport.update({
   id: '/notas',
@@ -46,37 +47,59 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComprasMercadoRoute = ComprasMercadoRouteImport.update({
+  id: '/mercado',
+  path: '/mercado',
+  getParentRoute: () => ComprasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRoute
+  '/compras': typeof ComprasRouteWithChildren
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRoute
+  '/compras/mercado': typeof ComprasMercadoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRoute
+  '/compras': typeof ComprasRouteWithChildren
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRoute
+  '/compras/mercado': typeof ComprasMercadoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRoute
+  '/compras': typeof ComprasRouteWithChildren
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRoute
+  '/compras/mercado': typeof ComprasMercadoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/compras' | '/financas' | '/instalar' | '/mais' | '/notas'
+  fullPaths:
+    | '/'
+    | '/compras'
+    | '/financas'
+    | '/instalar'
+    | '/mais'
+    | '/notas'
+    | '/compras/mercado'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/compras' | '/financas' | '/instalar' | '/mais' | '/notas'
+  to:
+    | '/'
+    | '/compras'
+    | '/financas'
+    | '/instalar'
+    | '/mais'
+    | '/notas'
+    | '/compras/mercado'
   id:
     | '__root__'
     | '/'
@@ -85,11 +108,12 @@ export interface FileRouteTypes {
     | '/instalar'
     | '/mais'
     | '/notas'
+    | '/compras/mercado'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ComprasRoute: typeof ComprasRoute
+  ComprasRoute: typeof ComprasRouteWithChildren
   FinancasRoute: typeof FinancasRoute
   InstalarRoute: typeof InstalarRoute
   MaisRoute: typeof MaisRoute
@@ -140,12 +164,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compras/mercado': {
+      id: '/compras/mercado'
+      path: '/mercado'
+      fullPath: '/compras/mercado'
+      preLoaderRoute: typeof ComprasMercadoRouteImport
+      parentRoute: typeof ComprasRoute
+    }
   }
 }
 
+interface ComprasRouteChildren {
+  ComprasMercadoRoute: typeof ComprasMercadoRoute
+}
+
+const ComprasRouteChildren: ComprasRouteChildren = {
+  ComprasMercadoRoute: ComprasMercadoRoute,
+}
+
+const ComprasRouteWithChildren =
+  ComprasRoute._addFileChildren(ComprasRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ComprasRoute: ComprasRoute,
+  ComprasRoute: ComprasRouteWithChildren,
   FinancasRoute: FinancasRoute,
   InstalarRoute: InstalarRoute,
   MaisRoute: MaisRoute,
