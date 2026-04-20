@@ -36,3 +36,6 @@ backups/
 # Logs
 *.log
 npm-debug.log*
+
+# TypeScript build info
+*.tsbuildinfo
