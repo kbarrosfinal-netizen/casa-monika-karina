@@ -1,8 +1,38 @@
-.superpowers/
+# dependencies
 node_modules/
+
+# build
 dist/
+dev-dist/
+*.local
+
+# env
 .env
 .env.local
 .env.*.local
-backups/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Supabase
+supabase/.branches
+supabase/.temp
+.supabase
+
+# Companion brainstorm cache
+.superpowers/
+
+# Test coverage
+coverage/
+
+# Migration backups (sensíveis)
+backups/
+
+# Logs
+*.log
+npm-debug.log*
