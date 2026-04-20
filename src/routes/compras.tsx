@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useProducts, useCategories } from '@/hooks/useProducts'
 import { useShoppingList, useToggleMissing } from '@/hooks/useShoppingList'
 import { CategoryGrid } from '@/components/shopping/CategoryGrid'
+import { NewProductModal } from '@/components/shopping/NewProductModal'
 import { ShoppingBag, Plus } from 'lucide-react'
 
 export const Route = createFileRoute('/compras')({
@@ -9,6 +11,7 @@ export const Route = createFileRoute('/compras')({
 })
 
 function ComprasPage() {
+  const [modalOpen, setModalOpen] = useState(false)
   const products = useProducts()
   const categories = useCategories()
   const shoppingList = useShoppingList()
@@ -67,10 +70,12 @@ function ComprasPage() {
         className="fixed bottom-24 right-4 w-14 h-14 rounded-full text-white shadow-lg flex items-center justify-center active:scale-95 transition"
         style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}
         aria-label="Novo produto"
-        onClick={() => alert('Em breve (Task 2.4)')}
+        onClick={() => setModalOpen(true)}
       >
         <Plus className="w-6 h-6" />
       </button>
+
+      <NewProductModal open={modalOpen} onClose={() => setModalOpen(false)} categories={categories.data ?? []} />
     </div>
   )
 }
