@@ -8,7 +8,7 @@ export const Route = createFileRoute('/mais')({
 function MaisPage() {
   const items = [
     { to: '/pets', icon: Dog, label: 'Pets', desc: 'Cachorro, gato, rotina', color: '#10b981' },
-    { to: '/izete', icon: Calendar, label: 'Izete', desc: 'Calendário da diarista', color: '#f59e0b' },
+    { to: '/izete', icon: Calendar, label: 'Zazá', desc: 'Diarista — terças, R$ 150', color: '#795548' },
     { to: '/os', icon: FileText, label: 'OS', desc: 'Ordens de serviço', color: '#6366f1' },
     { to: '/config', icon: SettingsIcon, label: 'Config', desc: 'Valores fixos, WhatsApp', color: '#64748b' }
   ]
