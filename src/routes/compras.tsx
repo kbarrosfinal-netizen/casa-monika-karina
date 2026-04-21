@@ -6,8 +6,8 @@ import { useMonthlyList, useAcceptMonthlyItem, useRemoveMonthlyItem } from '@/ho
 import { CategoryGrid } from '@/components/shopping/CategoryGrid'
 import { NewProductModal } from '@/components/shopping/NewProductModal'
 import { cn } from '@/lib/cn'
-import type { Product, MonthlyListItem } from '@/lib/types'
-import { ShoppingBag, Plus } from 'lucide-react'
+import type { Product, Category, MonthlyListItem, ShoppingListItem } from '@/lib/types'
+import { ShoppingBag, Plus, Send } from 'lucide-react'
 
 export const Route = createFileRoute('/compras')({
   component: ComprasPage
@@ -88,6 +88,14 @@ function ComprasPage() {
   const missingCount = shoppingList.data?.filter(i => i.is_missing).length ?? 0
   const month = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
+  const shareWhatsApp = () => {
+    const list = tab === 'falta'
+      ? buildMissingMessage(products.data ?? [], categories.data ?? [], shoppingList.data ?? [])
+      : buildMonthlyMessage(products.data ?? [], categories.data ?? [], monthly.data ?? [], month)
+    if (!list) return
+    window.open(`https://wa.me/?text=${encodeURIComponent(list)}`, '_blank')
+  }
+
   if (products.isLoading || categories.isLoading || shoppingList.isLoading || monthly.isLoading) {
     return <div className="p-4 text-center text-slate-500">Carregando…</div>
   }
@@ -135,14 +143,24 @@ function ComprasPage() {
       {tab === 'falta' && (
         <>
           {missingCount > 0 && (
-            <Link
-              to="/compras/mercado"
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold shadow-md"
-              style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)' }}
-            >
-              <ShoppingBag className="w-5 h-5" />
-              Ver lista do mercado
-            </Link>
+            <div className="space-y-2">
+              <button
+                onClick={shareWhatsApp}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold shadow-md active:scale-[0.98] transition"
+                style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}
+              >
+                <Send className="w-5 h-5" />
+                Enviar lista pelo WhatsApp
+              </button>
+              <Link
+                to="/compras/mercado"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold shadow-md"
+                style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)' }}
+              >
+                <ShoppingBag className="w-5 h-5" />
+                Ver lista por loja (cheapest)
+              </Link>
+            </div>
           )}
 
           <CategoryGrid
@@ -155,12 +173,24 @@ function ComprasPage() {
       )}
 
       {tab === 'mes' && (
-        <MonthlyListView
-          monthly={monthly.data ?? []}
-          products={products.data ?? []}
-          onAccept={(id) => accept.mutate(id)}
-          onRemove={(id) => remove.mutate(id)}
-        />
+        <>
+          {(monthly.data?.length ?? 0) > 0 && (
+            <button
+              onClick={shareWhatsApp}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold shadow-md active:scale-[0.98] transition"
+              style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}
+            >
+              <Send className="w-5 h-5" />
+              Enviar lista do mês pelo WhatsApp
+            </button>
+          )}
+          <MonthlyListView
+            monthly={monthly.data ?? []}
+            products={products.data ?? []}
+            onAccept={(id) => accept.mutate(id)}
+            onRemove={(id) => remove.mutate(id)}
+          />
+        </>
       )}
 
       <button
@@ -176,4 +206,50 @@ function ComprasPage() {
       <NewProductModal open={modalOpen} onClose={() => setModalOpen(false)} categories={categories.data ?? []} />
     </div>
   )
+}
+
+function buildMissingMessage(products: Product[], categories: Category[], shoppingList: ShoppingListItem[]): string {
+  const missingIds = new Set(shoppingList.filter(i => i.is_missing).map(i => i.product_id))
+  if (missingIds.size === 0) return ''
+  const catById = new Map(categories.map(c => [c.id, c]))
+  const grouped = new Map<string, { cat: Category | null; items: Product[] }>()
+  for (const p of products) {
+    if (!missingIds.has(p.id)) continue
+    const key = p.category_id ?? '__none__'
+    const entry = grouped.get(key)
+    if (entry) entry.items.push(p)
+    else grouped.set(key, { cat: p.category_id ? catById.get(p.category_id) ?? null : null, items: [p] })
+  }
+  const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  const lines: string[] = [`*Lista de compras — ${date}*`, '']
+  for (const { cat, items } of grouped.values()) {
+    lines.push(`${cat?.icon ?? '📦'} *${cat?.name ?? 'Outros'}*`)
+    for (const p of items) lines.push(`☐ ${p.icon} ${p.name}`)
+    lines.push('')
+  }
+  lines.push(`_Total: ${missingIds.size} ${missingIds.size === 1 ? 'item' : 'itens'}_`)
+  return lines.join('\n')
+}
+
+function buildMonthlyMessage(products: Product[], categories: Category[], monthly: MonthlyListItem[], monthLabel: string): string {
+  if (monthly.length === 0) return ''
+  const pById = new Map(products.map(p => [p.id, p]))
+  const catById = new Map(categories.map(c => [c.id, c]))
+  const grouped = new Map<string, { cat: Category | null; items: Product[] }>()
+  for (const m of monthly) {
+    const p = pById.get(m.product_id)
+    if (!p) continue
+    const key = p.category_id ?? '__none__'
+    const entry = grouped.get(key)
+    if (entry) entry.items.push(p)
+    else grouped.set(key, { cat: p.category_id ? catById.get(p.category_id) ?? null : null, items: [p] })
+  }
+  const lines: string[] = [`*Lista mensal — ${monthLabel}*`, '']
+  for (const { cat, items } of grouped.values()) {
+    lines.push(`${cat?.icon ?? '📦'} *${cat?.name ?? 'Outros'}*`)
+    for (const p of items) lines.push(`• ${p.icon} ${p.name}`)
+    lines.push('')
+  }
+  lines.push(`_Total: ${monthly.length} ${monthly.length === 1 ? 'item' : 'itens'}_`)
+  return lines.join('\n')
 }

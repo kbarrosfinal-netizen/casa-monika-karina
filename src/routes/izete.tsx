@@ -1,26 +1,49 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { useIzete, useToggleIzetePaid } from '@/hooks/useIzete'
-import { useSettings } from '@/hooks/useSettings'
+import type { IzeteEventFull } from '@/hooks/useIzete'
+import { useIzete, useMarkCame, useUnmarkCame, useTogglePaid } from '@/hooks/useIzete'
+import { useSettings, useUpdateSettings } from '@/hooks/useSettings'
 import { Copy, Check } from 'lucide-react'
 
 export const Route = createFileRoute('/izete')({
   component: ZazaPage
 })
 
+interface Task {
+  id: number
+  t: string
+  done: boolean
+}
+
+function allTuesdaysOfMonth(year: number, monthIdx: number): string[] {
+  const out: string[] = []
+  const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
+  for (let d = 1; d <= lastDay; d++) {
+    const date = new Date(Date.UTC(year, monthIdx, d))
+    if (date.getUTCDay() === 2) {
+      out.push(date.toISOString().slice(0, 10))
+    }
+  }
+  return out
+}
+
 function ZazaPage() {
   const settings = useSettings()
   const events = useIzete()
-  const toggle = useToggleIzetePaid()
+  const mark = useMarkCame()
+  const unmark = useUnmarkCame()
+  const togglePaid = useTogglePaid()
+  const updateSettings = useUpdateSettings()
+
   const [copied, setCopied] = useState(false)
-  const [monthIdx, setMonthIdx] = useState(new Date().getMonth())
+  const [monthIdx, setMonthIdx] = useState(Math.max(3, new Date().getMonth())) // Abril = 3
 
   const name = settings.data?.data?.diarista_name ?? 'Diarista'
   const pix = settings.data?.data?.diarista_pix ?? ''
-  const diaria = settings.data?.diaria_value ?? 150
-  const transp = settings.data?.transp_value ?? 10
-  const valorPorVisita = Number(diaria) + Number(transp)
-  const tasks: Array<{ id: number; t: string; done: boolean }> = settings.data?.data?.diarista_tasks ?? []
+  const diaria = Number(settings.data?.diaria_value ?? 150)
+  const transp = Number(settings.data?.transp_value ?? 0)
+  const valorPorVisita = diaria + transp
+  const tasks: Task[] = settings.data?.data?.diarista_tasks ?? []
 
   const copyPix = async () => {
     if (!pix) return
@@ -33,30 +56,70 @@ function ZazaPage() {
     }
   }
 
-  const monthEvents = useMemo(() => {
-    if (!events.data) return []
-    return events.data.filter(e => {
-      const d = new Date(e.event_date)
-      return d.getUTCMonth() === monthIdx && d.getUTCFullYear() === 2026
-    }).sort((a, b) => a.event_date.localeCompare(b.event_date))
-  }, [events.data, monthIdx])
+  // Mapa date → event
+  const eventByDate = useMemo(() => {
+    const m = new Map<string, IzeteEventFull>()
+    for (const e of events.data ?? []) m.set(e.event_date, e)
+    return m
+  }, [events.data])
 
+  // Totais 2026
   const totals = useMemo(() => {
-    const events2026 = events.data?.filter(e => new Date(e.event_date).getUTCFullYear() === 2026) ?? []
-    const worked = events2026.filter(e => (e.paid_amount ?? 0) > 0 || e.paid)
-    const paid = worked.filter(e => e.paid).length * valorPorVisita
-    const pending = worked.filter(e => !e.paid).length * valorPorVisita
-    return { pending, paid, days: worked.length }
+    const events2026 = (events.data ?? []).filter(e => e.event_date.startsWith('2026'))
+    const paid = events2026.filter(e => e.paid).length * valorPorVisita
+    const pending = events2026.filter(e => !e.paid).length * valorPorVisita
+    return { pending, paid, days: events2026.length }
   }, [events.data, valorPorVisita])
+
+  // Todas as terças do mês selecionado
+  const tuesdaysOfMonth = useMemo(() => allTuesdaysOfMonth(2026, monthIdx), [monthIdx])
 
   const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
   const MESES_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+
+  // Toggle "veio" — cria ou apaga evento
+  const toggleCame = (date: string) => {
+    const ev = eventByDate.get(date)
+    if (!ev) {
+      mark.mutate(date)
+    } else if (ev.paid) {
+      // Se já está pago, primeiro desmarca pago, depois remove
+      if (!confirm('Este dia já está pago. Desfazer pagamento e "veio"?')) return
+      togglePaid.mutate(
+        { id: ev.id, paid: false, amount: valorPorVisita, eventDate: date },
+        { onSuccess: () => unmark.mutate(ev.id) }
+      )
+    } else {
+      unmark.mutate(ev.id)
+    }
+  }
+
+  // Toggle tarefa
+  const toggleTask = (taskId: number) => {
+    if (!settings.data) return
+    const newTasks = tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t)
+    const newData = { ...settings.data.data, diarista_tasks: newTasks }
+    updateSettings.mutate({ data: newData })
+  }
+
+  // Reset tarefas (todas undone)
+  const resetTasks = () => {
+    if (!settings.data) return
+    const newTasks = tasks.map(t => ({ ...t, done: false }))
+    const newData = { ...settings.data.data, diarista_tasks: newTasks }
+    updateSettings.mutate({ data: newData })
+  }
+
+  const taskDone = tasks.filter(t => t.done).length
+  const taskPct = tasks.length ? Math.round((taskDone / tasks.length) * 100) : 0
 
   return (
     <div className="p-4 space-y-4 pb-28">
       <header>
         <h2 className="text-xl font-bold">{name}</h2>
-        <p className="text-xs text-slate-500">Diarista · {diaria !== null ? `R$ ${diaria} diária + R$ ${transp} transporte` : 'valor não configurado'}</p>
+        <p className="text-xs text-slate-500">
+          Diarista · R$ {valorPorVisita.toFixed(2)} {transp > 0 ? '(diária + transporte)' : '(tudo incluso)'}
+        </p>
       </header>
 
       <div className="grid grid-cols-3 gap-2">
@@ -77,7 +140,7 @@ function ZazaPage() {
       {pix && (
         <div className="rounded-xl bg-white border border-slate-200 border-l-4 p-4 flex items-center gap-3" style={{ borderLeftColor: '#795548' }}>
           <div className="flex-1">
-            <p className="text-[10px] uppercase font-bold text-amber-900 tracking-wider">PIX da {name}</p>
+            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#795548' }}>PIX da {name}</p>
             <p className="text-base font-mono mt-1">{pix}</p>
           </div>
           <button
@@ -91,7 +154,7 @@ function ZazaPage() {
       )}
 
       <div className="rounded-lg bg-amber-50 border-l-4 border-amber-400 p-3 text-xs text-slate-700">
-        <strong className="text-amber-900">Como funciona:</strong> {name} marca que veio. Você confirma o pagamento. Valor: <strong>R$ {valorPorVisita.toFixed(2)}</strong> tudo incluso.
+        <strong className="text-amber-900">Como funciona:</strong> {name} marca que veio → você confirma o pagamento. Valor: <strong>R$ {valorPorVisita.toFixed(2)}</strong> tudo incluso.
       </div>
 
       <div>
@@ -108,47 +171,59 @@ function ZazaPage() {
             </button>
           ))}
         </div>
+
         <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
           <div className="grid px-3 py-2 text-[9px] font-bold uppercase text-slate-400" style={{ gridTemplateColumns: '50px 30px 1fr 1fr 70px', gap: '4px' }}>
             <span></span>
             <span></span>
-            <span className="text-center">{name} veio</span>
+            <span className="text-center">Veio?</span>
             <span className="text-center">Pagar</span>
             <span className="text-right">Acum.</span>
           </div>
-          {monthEvents.length === 0 ? (
-            <p className="text-center text-sm text-slate-400 py-4">Nenhum evento neste mês.</p>
+          {tuesdaysOfMonth.length === 0 ? (
+            <p className="text-center text-sm text-slate-400 py-4">Nenhuma terça neste mês.</p>
           ) : (
-            monthEvents.map(e => {
-              const d = new Date(e.event_date)
-              const dayStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })
-              const worked = (e.paid_amount ?? 0) > 0 || e.paid
+            tuesdaysOfMonth.map(date => {
+              const ev = eventByDate.get(date)
+              const came = !!ev
+              const paid = ev?.paid ?? false
+              const day = date.slice(8, 10) + '/' + date.slice(5, 7)
+
               return (
                 <div
-                  key={e.id}
+                  key={date}
                   className="grid items-center px-3 py-2"
-                  style={{ gridTemplateColumns: '50px 30px 1fr 1fr 70px', gap: '4px', opacity: e.paid ? 0.5 : 1 }}
+                  style={{ gridTemplateColumns: '50px 30px 1fr 1fr 70px', gap: '4px', opacity: paid ? 0.6 : 1 }}
                 >
-                  <span className="text-sm">{dayStr}</span>
+                  <span className="text-sm font-semibold">{day}</span>
                   <span className="text-[9px] font-bold bg-blue-100 text-blue-700 rounded px-1 py-0.5 text-center">Ter</span>
                   <div className="flex justify-center">
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${worked ? 'text-white' : 'bg-slate-100 text-slate-400'}`} style={worked ? { background: '#795548' } : {}}>
-                      {worked ? '✓ veio' : 'veio?'}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleCame(date)}
+                      disabled={mark.isPending || unmark.isPending}
+                      className={`text-[11px] px-3 py-1.5 rounded-full font-bold transition active:scale-95 disabled:opacity-50 ${came ? 'text-white' : 'bg-slate-100 text-slate-500'}`}
+                      style={came ? { background: '#795548' } : {}}
+                    >
+                      {came ? '✓ veio' : 'veio?'}
+                    </button>
                   </div>
                   <div className="flex justify-center">
-                    {worked && (
+                    {came ? (
                       <button
-                        onClick={() => toggle.mutate({ id: e.id, paid: !e.paid, amount: valorPorVisita })}
-                        className={`text-[10px] px-2 py-1 rounded-full font-bold ${e.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}
+                        type="button"
+                        onClick={() => ev && togglePaid.mutate({ id: ev.id, paid: !paid, amount: valorPorVisita, eventDate: date })}
+                        disabled={togglePaid.isPending}
+                        className={`text-[11px] px-3 py-1.5 rounded-full font-bold transition active:scale-95 disabled:opacity-50 ${paid ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}
                       >
-                        {e.paid ? '✓ pago' : `R$${valorPorVisita}`}
+                        {paid ? '✓ pago' : `R$${valorPorVisita}`}
                       </button>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
                     )}
-                    {!worked && <span className="text-xs text-slate-300">—</span>}
                   </div>
                   <span className="text-xs font-bold text-right text-rose-600">
-                    {worked && !e.paid ? `R$${valorPorVisita}` : ''}
+                    {came && !paid ? `R$${valorPorVisita}` : ''}
                   </span>
                 </div>
               )
@@ -158,18 +233,46 @@ function ZazaPage() {
       </div>
 
       <section>
-        <h3 className="text-xs uppercase font-bold mb-2" style={{ color: '#795548' }}>
-          Tarefas — {MESES_FULL[monthIdx]}
-        </h3>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-1">
-          {tasks.length === 0 && <p className="text-sm text-slate-400">Sem tarefas configuradas.</p>}
-          {tasks.map(t => (
-            <div key={t.id} className="flex items-center gap-2 py-1.5 px-1 text-sm">
-              <span className="w-4 h-4 rounded border-2 border-amber-800 flex-shrink-0" style={{ background: t.done ? '#795548' : 'transparent' }} />
-              <span className={t.done ? 'line-through text-slate-400' : ''}>{t.t}</span>
-            </div>
-          ))}
-          <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 mt-2">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs uppercase font-bold" style={{ color: '#795548' }}>
+            Tarefas — {MESES_FULL[monthIdx]} ({taskDone}/{tasks.length})
+          </h3>
+          <button
+            onClick={resetTasks}
+            className="text-[11px] text-slate-500 underline"
+          >
+            Resetar
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="h-1.5 bg-slate-100">
+            <div className="h-full transition-all" style={{ width: `${taskPct}%`, background: '#795548' }} />
+          </div>
+
+          <ul className="divide-y divide-slate-100">
+            {tasks.length === 0 && <li className="text-sm text-slate-400 p-4 text-center">Sem tarefas configuradas.</li>}
+            {tasks.map(t => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleTask(t.id)}
+                  disabled={updateSettings.isPending}
+                  className="w-full flex items-center gap-3 py-2.5 px-3 text-left active:bg-slate-50 disabled:opacity-50"
+                >
+                  <span
+                    className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center ${t.done ? 'text-white' : 'border-amber-800'}`}
+                    style={t.done ? { background: '#795548', borderColor: '#795548' } : {}}
+                  >
+                    {t.done && <Check className="w-3.5 h-3.5" />}
+                  </span>
+                  <span className={`text-sm flex-1 ${t.done ? 'line-through text-slate-400' : ''}`}>{t.t}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <p className="text-[10px] text-slate-400 p-2 text-center border-t border-slate-100">
             Editar tarefas em Config → "Tarefas da {name}"
           </p>
         </div>
