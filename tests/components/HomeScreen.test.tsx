@@ -7,7 +7,7 @@ describe('HomeScreen', () => {
   it('mostra os 2 CTAs principais', async () => {
     renderRoute(HomeScreen, '/')
     expect(await screen.findByRole('button', { name: /marcar item que acabou/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /fotografar nota fiscal/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /fotografar nota fiscal/i })).toBeInTheDocument()
   })
 
   it('mostra KPIs placeholder', async () => {
