@@ -9,15 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PetsRouteImport } from './routes/pets'
+import { Route as OsRouteImport } from './routes/os'
 import { Route as NotasRouteImport } from './routes/notas'
 import { Route as MaisRouteImport } from './routes/mais'
+import { Route as IzeteRouteImport } from './routes/izete'
 import { Route as InstalarRouteImport } from './routes/instalar'
 import { Route as FinancasRouteImport } from './routes/financas'
+import { Route as ConfigRouteImport } from './routes/config'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotasFotografarRouteImport } from './routes/notas.fotografar'
 import { Route as ComprasMercadoRouteImport } from './routes/compras.mercado'
 
+const PetsRoute = PetsRouteImport.update({
+  id: '/pets',
+  path: '/pets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OsRoute = OsRouteImport.update({
+  id: '/os',
+  path: '/os',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotasRoute = NotasRouteImport.update({
   id: '/notas',
   path: '/notas',
@@ -28,6 +42,11 @@ const MaisRoute = MaisRouteImport.update({
   path: '/mais',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IzeteRoute = IzeteRouteImport.update({
+  id: '/izete',
+  path: '/izete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InstalarRoute = InstalarRouteImport.update({
   id: '/instalar',
   path: '/instalar',
@@ -36,6 +55,11 @@ const InstalarRoute = InstalarRouteImport.update({
 const FinancasRoute = FinancasRouteImport.update({
   id: '/financas',
   path: '/financas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigRoute = ConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComprasRoute = ComprasRouteImport.update({
@@ -62,20 +86,28 @@ const ComprasMercadoRoute = ComprasMercadoRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/compras': typeof ComprasRouteWithChildren
+  '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
+  '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRouteWithChildren
+  '/os': typeof OsRoute
+  '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
   '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/compras': typeof ComprasRouteWithChildren
+  '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
+  '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRouteWithChildren
+  '/os': typeof OsRoute
+  '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
   '/notas/fotografar': typeof NotasFotografarRoute
 }
@@ -83,10 +115,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/compras': typeof ComprasRouteWithChildren
+  '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
+  '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
   '/notas': typeof NotasRouteWithChildren
+  '/os': typeof OsRoute
+  '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
   '/notas/fotografar': typeof NotasFotografarRoute
 }
@@ -95,30 +131,42 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/compras'
+    | '/config'
     | '/financas'
     | '/instalar'
+    | '/izete'
     | '/mais'
     | '/notas'
+    | '/os'
+    | '/pets'
     | '/compras/mercado'
     | '/notas/fotografar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/compras'
+    | '/config'
     | '/financas'
     | '/instalar'
+    | '/izete'
     | '/mais'
     | '/notas'
+    | '/os'
+    | '/pets'
     | '/compras/mercado'
     | '/notas/fotografar'
   id:
     | '__root__'
     | '/'
     | '/compras'
+    | '/config'
     | '/financas'
     | '/instalar'
+    | '/izete'
     | '/mais'
     | '/notas'
+    | '/os'
+    | '/pets'
     | '/compras/mercado'
     | '/notas/fotografar'
   fileRoutesById: FileRoutesById
@@ -126,14 +174,32 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ComprasRoute: typeof ComprasRouteWithChildren
+  ConfigRoute: typeof ConfigRoute
   FinancasRoute: typeof FinancasRoute
   InstalarRoute: typeof InstalarRoute
+  IzeteRoute: typeof IzeteRoute
   MaisRoute: typeof MaisRoute
   NotasRoute: typeof NotasRouteWithChildren
+  OsRoute: typeof OsRoute
+  PetsRoute: typeof PetsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pets': {
+      id: '/pets'
+      path: '/pets'
+      fullPath: '/pets'
+      preLoaderRoute: typeof PetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/os': {
+      id: '/os'
+      path: '/os'
+      fullPath: '/os'
+      preLoaderRoute: typeof OsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notas': {
       id: '/notas'
       path: '/notas'
@@ -148,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/izete': {
+      id: '/izete'
+      path: '/izete'
+      fullPath: '/izete'
+      preLoaderRoute: typeof IzeteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/instalar': {
       id: '/instalar'
       path: '/instalar'
@@ -160,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/financas'
       fullPath: '/financas'
       preLoaderRoute: typeof FinancasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/config': {
+      id: '/config'
+      path: '/config'
+      fullPath: '/config'
+      preLoaderRoute: typeof ConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compras': {
@@ -217,10 +297,14 @@ const NotasRouteWithChildren = NotasRoute._addFileChildren(NotasRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComprasRoute: ComprasRouteWithChildren,
+  ConfigRoute: ConfigRoute,
   FinancasRoute: FinancasRoute,
   InstalarRoute: InstalarRoute,
+  IzeteRoute: IzeteRoute,
   MaisRoute: MaisRoute,
   NotasRoute: NotasRouteWithChildren,
+  OsRoute: OsRoute,
+  PetsRoute: PetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
