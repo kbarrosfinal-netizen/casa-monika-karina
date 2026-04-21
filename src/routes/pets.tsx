@@ -112,32 +112,95 @@ function PetModal({ pet, onSave, onClose }: {
         onClick={e => e.stopPropagation()}
         onSubmit={async e => {
           e.preventDefault()
-          if (!name.trim() || !species.trim()) return
+          if (!name.trim()) return
           setSubmitting(true)
-          await onSave({ name: name.trim(), species: species.trim(), emoji, birthdate: birthdate || null, notes: notes || null })
-          setSubmitting(false)
+          try {
+            await onSave({
+              name: name.trim(),
+              species: species.trim() || null,
+              emoji,
+              birthdate: birthdate || null,
+              notes: notes || null
+            })
+          } finally {
+            setSubmitting(false)
+          }
         }}
-        className="bg-white w-full rounded-t-2xl p-5 space-y-3"
+        className="bg-white w-full rounded-t-2xl flex flex-col max-h-[90vh]"
       >
-        <h3 className="text-lg font-bold">{pet ? 'Editar pet' : 'Novo pet'}</h3>
-        <div className="flex gap-2 flex-wrap">
-          {EMOJI_OPTIONS.map(e => (
-            <button
-              key={e}
-              type="button"
-              onClick={() => setEmoji(e)}
-              className={`text-2xl p-2 rounded-xl ${emoji === e ? 'bg-emerald-100 ring-2 ring-emerald-400' : 'bg-slate-100'}`}
-            >{e}</button>
-          ))}
+        <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+          <h3 className="text-lg font-bold">{pet ? 'Editar pet' : 'Novo pet'}</h3>
         </div>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do pet*" className="w-full border border-slate-200 rounded-lg px-3 py-2" />
-        <input value={species} onChange={e => setSpecies(e.target.value)} placeholder="Espécie (ex: Cachorro, Gato)*" className="w-full border border-slate-200 rounded-lg px-3 py-2" />
-        <input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2" />
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações (ração, vacinas…)" rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 resize-none" />
-        <div className="flex gap-2 pt-1">
-          <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-slate-300">Cancelar</button>
-          <button type="submit" disabled={submitting || !name.trim()} className="flex-1 py-2 rounded-lg text-white font-bold disabled:opacity-50" style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)' }}>
-            {submitting ? 'Salvando…' : 'Salvar'}
+
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+          <div>
+            <label className="text-xs font-bold text-slate-500">Ícone</label>
+            <div className="flex gap-2 flex-wrap mt-1">
+              {EMOJI_OPTIONS.map(e => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setEmoji(e)}
+                  className={`text-2xl p-2 rounded-xl ${emoji === e ? 'bg-emerald-100 ring-2 ring-emerald-400' : 'bg-slate-100'}`}
+                >{e}</button>
+              ))}
+            </div>
+          </div>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500">Nome *</span>
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Ex: Cookie"
+              className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500">Espécie</span>
+            <input
+              value={species}
+              onChange={e => setSpecies(e.target.value)}
+              placeholder="Ex: Cachorro, Gato, Coelho…"
+              className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500">Data de nascimento</span>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={e => setBirthdate(e.target.value)}
+              className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500">Observações</span>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Ração, vacinas, vet…"
+              rows={2}
+              className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 resize-none"
+            />
+          </label>
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-slate-100 bg-white sticky bottom-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-lg border border-slate-300 font-semibold"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            className="flex-1 py-2.5 rounded-lg text-white font-bold disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)' }}
+          >
+            {submitting ? 'Salvando…' : 'Salvar pet'}
           </button>
         </div>
       </form>
