@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 export interface Pet {
   id: string
   name: string
-  species: string
+  species: string | null
   emoji: string
   birthdate: string | null
   notes: string | null
