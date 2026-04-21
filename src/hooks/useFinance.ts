@@ -61,3 +61,61 @@ export function useAddFinanceEntry() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['finance_entries'] })
   })
 }
+
+/**
+ * Saldo do vale-refeição para o mês selecionado.
+ * Receita = finance_entries com category='vale-refeicao' (income lançado no último dia do mês)
+ * Gasto = receipts cujo ocr_json.forma inclui 'Ticket' (compras pagas com ticket)
+ * Saldo = receita - gasto
+ */
+export function useTicketBalance(monthStr: string) {
+  const qc = useQueryClient()
+  const { start, end } = monthBounds(monthStr)
+
+  const q = useQuery({
+    queryKey: ['ticket_balance', monthStr],
+    queryFn: async () => {
+      const { data: incomeRows, error: eIn } = await supabase
+        .from('finance_entries')
+        .select('amount')
+        .eq('category', 'vale-refeicao')
+        .eq('type', 'income')
+        .gte('date', start)
+        .lte('date', end)
+      if (eIn) throw eIn
+
+      const income = (incomeRows ?? []).reduce((s, e) => s + Number(e.amount || 0), 0)
+
+      const { data: receipts, error: eR } = await supabase
+        .from('receipts')
+        .select('total, ocr_json, purchased_at')
+        .gte('purchased_at', `${start}T00:00:00Z`)
+        .lte('purchased_at', `${end}T23:59:59Z`)
+      if (eR) throw eR
+
+      const spent = (receipts ?? [])
+        .filter(r => {
+          const forma = (r.ocr_json as { forma?: string } | null)?.forma ?? ''
+          return /ticket/i.test(forma)
+        })
+        .reduce((s, r) => s + Number(r.total || 0), 0)
+
+      return { income, spent, remaining: income - spent }
+    }
+  })
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`ticket-${monthStr}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_entries' }, () => {
+        qc.invalidateQueries({ queryKey: ['ticket_balance'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'receipts' }, () => {
+        qc.invalidateQueries({ queryKey: ['ticket_balance'] })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [qc, monthStr])
+
+  return q
+}

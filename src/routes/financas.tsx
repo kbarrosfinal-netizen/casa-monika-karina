@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { useFinance, useAddFinanceEntry } from '@/hooks/useFinance'
-import { Plus, ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { useFinance, useAddFinanceEntry, useTicketBalance } from '@/hooks/useFinance'
+import { Plus, ArrowDownRight, ArrowUpRight, Ticket } from 'lucide-react'
 
 export const Route = createFileRoute('/financas')({
   component: FinancasPage
@@ -15,6 +15,7 @@ function currentMonthStr() {
 function FinancasPage() {
   const [month, setMonth] = useState(currentMonthStr())
   const { data: entries } = useFinance(month)
+  const ticket = useTicketBalance(month)
   const add = useAddFinanceEntry()
   const [formOpen, setFormOpen] = useState(false)
 
@@ -65,6 +66,29 @@ function FinancasPage() {
           <p className="text-[10px] uppercase opacity-80">Saldo</p>
         </div>
       </div>
+
+      {ticket.data && ticket.data.income > 0 && (
+        <div className="rounded-2xl p-4 text-white shadow-md" style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Ticket className="w-5 h-5" />
+            <p className="text-xs font-bold uppercase tracking-wider opacity-90">Vale-refeição do mês</p>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-3xl font-extrabold">{fmtMoney(ticket.data.remaining)}</p>
+            <p className="text-xs opacity-80">disponível</p>
+          </div>
+          <div className="mt-3 h-2 bg-white/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white/90 transition-all"
+              style={{ width: `${Math.max(0, Math.min(100, (ticket.data.remaining / ticket.data.income) * 100))}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[11px] mt-1.5 opacity-90">
+            <span>gasto: {fmtMoney(ticket.data.spent)}</span>
+            <span>total: {fmtMoney(ticket.data.income)}</span>
+          </div>
+        </div>
+      )}
 
       {Object.keys(byCategory).length > 0 && (
         <section>
