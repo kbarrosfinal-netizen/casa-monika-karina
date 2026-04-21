@@ -167,6 +167,20 @@ export default async (req: Request, _ctx: Context) => {
     // Trigger suggestions enrichment (simple: based on 3-month frequency)
     await enrichMonthlySuggestions(sb, monthStart)
 
+    // Delete photo from Supabase Storage after successful processing
+    try {
+      // photo_url format: https://<ref>.supabase.co/storage/v1/object/public/receipts/<path>
+      const storageMarker = '/storage/v1/object/public/receipts/'
+      const markerIdx = photo_url.indexOf(storageMarker)
+      if (markerIdx !== -1) {
+        const storagePath = photo_url.slice(markerIdx + storageMarker.length)
+        await sb.storage.from('receipts').remove([storagePath])
+        await sb.from('receipts').update({ photo_url: '' }).eq('id', receipt_id)
+      }
+    } catch (delErr) {
+      console.warn('ocr-receipt: failed to delete photo (non-fatal)', delErr)
+    }
+
     return new Response(JSON.stringify({ ok: true, items: parsed.items?.length ?? 0, total: parsed.total }), {
       status: 200,
       headers: { 'content-type': 'application/json' }
