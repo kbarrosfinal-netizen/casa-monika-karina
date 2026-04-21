@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Share2, Download } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { jsPDF } from 'jspdf'
 
@@ -44,6 +44,9 @@ const DEFAULT_STATE: OSData = {
   fimH: '',
   servicos: ['', '', '', '', ''],
   autorizados: [
+    { nome: '', cpf: '' },
+    { nome: '', cpf: '' },
+    { nome: '', cpf: '' },
     { nome: '', cpf: '' },
     { nome: '', cpf: '' },
     { nome: '', cpf: '' },
@@ -118,28 +121,36 @@ function generatePDF(o: OSData) {
     cy += 9
   }
 
-  // PRESTADORES
+  // PRESTADORES — 7 linhas conforme formulário oficial Soberane 2026
   hdrBox('PRESTADORES AUTORIZADOS PARA EXECUCAO DOS SERVICOS', cy, 6); cy += 6
-  for (let pi = 0; pi < 4; pi++) {
+  for (let pi = 0; pi < 7; pi++) {
     const a = o.autorizados[pi] || { nome: '', cpf: '' }
     row2('Nome:', a.nome || '', 'CPF:', a.cpf || '', cy, 8); cy += 8
   }
 
-  // CLAUSULAS
+  // CLAUSULAS — texto oficial do formulário Soberane 2026
   hdrBox('CLAUSULAS', cy, 6); cy += 6
   const cls = [
-    '1 - Responsabilidade pelos Prestadores: O Condomino declara estar ciente de que todos os profissionais por ele contratados sao de sua exclusiva responsabilidade.',
-    '2 - Uso Obrigatorio de EPI: Todos os prestadores devem utilizar EPI adequado conforme as Normas Regulamentadoras.',
-    '3 - Atendimento ao Manual de Obras: Todos os servicos realizados deverao obedecer as diretrizes do Manual de Obras do Condominio.',
-    '4 - Horarios: Residence: Seg-Sex 08h-17h, Sab 09h-12h. Corporate: Seg-Sex 20h-06h, Sab 13h-06h. Mall: todos os dias 22h-06h.',
-    '5 - Carga e Descarga: Armazenamento permitido por ate 72 horas na area designada.',
-    '6 - Prazo de analise: Esta OS deve ser apresentada em ate 12h antes do inicio das atividades.'
+    '1 - Responsabilidade pelos Prestadores: O Condomino declara estar ciente de que todos os profissionais por ele contratados sao de sua exclusiva responsabilidade, isentando o Condominio de qualquer dano, acidente, prejuizo ou ocorrencia decorrente da execucao dos servicos.',
+    '2 - Uso Obrigatorio de EPI: Todos os prestadores devem utilizar EPI adequado, conforme as Normas Regulamentadoras aplicaveis. A falta de equipamentos de seguranca autoriza o Condominio a impedir ou interromper o servico sem gerar direito a reclamacao.',
+    '3 - Atendimento ao Manual de Obras do Condominio: Todos os servicos realizados deverao obedecer integralmente as diretrizes, requisitos tecnicos e procedimentos previstos no Manual de Obras do Condominio. O nao cumprimento das orientacoes estabelecidas podera resultar na suspensao da atividade, na necessidade de refazimento dos servicos e na aplicacao das medidas administrativas cabiveis.',
+    '4 - Horarios das Obras e Entrega de Material:',
+    '4.1 Subcondominio Residence (Item 64 do Regimento Interno): Segunda a sexta: das 08h00 as 12h00 e das 14h00 as 17h00, Sabados: das 09h00 as 12h00, Domingos e Feriados nao e permitido quaisquer tipos de servico.',
+    '4.2 Subcondominio Corporate: Segunda a sexta: das 20h00 as 06h00, Sabados: das 13h00 as 06h00, Domingos e Feriados nao e permitido quaisquer tipos de servico.',
+    '4.3 Subcondominio Mall: Segunda a Domingo: das 22h00 as 06h00 e nos dias em que o shopping estiver fechado, serao permitidas as obras em qualquer horario.',
+    '5 - Carga e Descarga: O armazenamento de materiais no espaco de carga e descarga e permitido por ate 72 horas, apos esse prazo, os itens devem ser retirados obrigatoriamente do local. O condominio nao se responsabiliza por quaisquer danos, extravios ou perdas referentes aos materiais armazenados nesse espaco. Materiais deixados alem do prazo poderao ser removidos sem aviso previo, visando a manutencao da ordem e circulacao da area. Nao havera local especial para estacionamento de veiculos de prestadores de servicos, devendo estes utilizar a infraestrutura existente no condominio.',
+    '6 - Prazo de analise: Esta Ordem de Servico deve ser apresentada em ate 12h antes do inicio das atividades propostas.'
   ]
   cls.forEach((cl) => {
     doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(0)
     const lines = doc.splitTextToSize(cl, MW - 4)
-    const bh = lines.length * 4 + 3
-    rect(ML, cy, MW, bh); doc.text(lines, ML + 2, cy + 4); cy += bh
+    const bh = lines.length * 3.2 + 3
+    // Se não couber mais na página, adiciona nova página
+    if (cy + bh > 285) {
+      doc.addPage()
+      cy = 10
+    }
+    rect(ML, cy, MW, bh); doc.text(lines, ML + 2, cy + 3.8); cy += bh
   })
 
   // Declaração
@@ -161,7 +172,41 @@ function generatePDF(o: OSData) {
   doc.text('Data: _______________ As: __________', ML + 2, cy + 16)
   doc.text('Data: _______________ As: __________', ML + MW / 2 + 2, cy + 16)
 
-  doc.save('OrdemServico_Soberane.pdf')
+  return doc
+}
+
+async function generateAndShare(o: OSData, mode: 'download' | 'share') {
+  const doc = generatePDF(o)
+  const filename = `OrdemServico_Soberane_${o.unidade || 'OS'}.pdf`
+
+  if (mode === 'download') {
+    doc.save(filename)
+    return
+  }
+
+  // Share via Web Share API (mobile)
+  const blob = doc.output('blob')
+  const file = new File([blob], filename, { type: 'application/pdf' })
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Ordem de Serviço — Condomínio Soberane',
+        text: `OS da unidade ${o.unidade || ''} para liberação na portaria.`
+      })
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        alert('Não foi possível compartilhar. Baixe o arquivo e envie manualmente.')
+        doc.save(filename)
+      }
+    }
+  } else {
+    // Fallback: baixa + abre WhatsApp Web com texto (usuário anexa manual)
+    doc.save(filename)
+    const msg = `Olá, segue em anexo a OS da unidade ${o.unidade || ''} para liberação.`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+  }
 }
 
 const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white'
@@ -223,7 +268,11 @@ function OSPage() {
   }
 
   function handleGeneratePDF() {
-    generatePDF(form)
+    generateAndShare(form, 'download')
+  }
+
+  function handleShareWhatsApp() {
+    generateAndShare(form, 'share')
   }
 
   return (
@@ -353,11 +402,20 @@ function OSPage() {
       {/* Action buttons */}
       <div className="space-y-2">
         <button
+          onClick={handleShareWhatsApp}
+          className="w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md"
+          style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}
+        >
+          <Share2 className="w-5 h-5" />
+          Enviar à portaria (WhatsApp)
+        </button>
+        <button
           onClick={handleGeneratePDF}
-          className="w-full py-3 rounded-xl text-white font-bold text-sm"
+          className="w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"
           style={{ background: '#1565c0' }}
         >
-          Gerar PDF — Ordem de Serviço
+          <Download className="w-5 h-5" />
+          Baixar PDF
         </button>
         <button
           onClick={() => { if (confirm('Limpar todos os dados do formulário?')) clearForm() }}
