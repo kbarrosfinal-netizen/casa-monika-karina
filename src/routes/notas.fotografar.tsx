@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReceiptUpload } from '@/hooks/useReceiptUpload'
 import { useStores } from '@/hooks/useProducts'
 import { supabase } from '@/lib/supabase'
-import { Camera, ArrowLeft, CheckCircle2, AlertCircle, Edit } from 'lucide-react'
+import { Camera, ArrowLeft, CheckCircle2, AlertCircle, Edit, ImageIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/notas/fotografar')({
   component: FotografarPage
@@ -15,6 +15,8 @@ function FotografarPage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [mode, setMode] = useState<'choose' | 'photo' | 'manual'>('choose')
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const upload = useReceiptUpload()
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,25 +54,48 @@ function FotografarPage() {
 
       {mode === 'choose' && (
         <div className="space-y-3">
-          <label
-            className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center gap-3 text-slate-500 cursor-pointer active:scale-[0.98] transition"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onFile}
-              className="absolute w-0 h-0 opacity-0"
-            />
-            <Camera className="w-14 h-14" style={{ color: '#06b6d4' }} />
-            <span className="font-bold text-base text-slate-700">Fotografar nota</span>
-            <span className="text-xs">toque aqui — abre a câmera</span>
-            <span className="text-[10px] text-slate-400 mt-2 px-4 text-center">
-              Os itens, loja e valor são extraídos automaticamente e a foto é apagada depois.
-            </span>
-          </label>
+          {/* Hidden file inputs — controlados via ref */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onFile}
+            className="sr-only"
+            aria-hidden="true"
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onFile}
+            className="sr-only"
+            aria-hidden="true"
+          />
 
-          <div className="relative">
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-cyan-400 bg-gradient-to-br from-cyan-50 to-blue-50 flex flex-col items-center justify-center gap-3 text-slate-600 active:scale-[0.98] transition"
+          >
+            <Camera className="w-16 h-16" style={{ color: '#06b6d4' }} />
+            <span className="font-bold text-lg text-slate-800">Abrir câmera</span>
+            <span className="text-sm">e fotografar a nota</span>
+            <span className="text-[11px] text-slate-400 mt-3 px-6 text-center leading-relaxed">
+              A foto é lida automaticamente (itens, loja, valor) e apagada depois do processamento.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            className="w-full rounded-xl border border-slate-300 bg-white py-3 flex items-center justify-center gap-2 text-slate-700 font-semibold text-sm active:scale-[0.98] transition"
+          >
+            <ImageIcon className="w-5 h-5" />
+            Escolher da galeria
+          </button>
+
+          <div className="relative py-1">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200" />
             </div>
@@ -80,8 +105,9 @@ function FotografarPage() {
           </div>
 
           <button
+            type="button"
             onClick={() => setMode('manual')}
-            className="w-full rounded-2xl border border-slate-300 bg-white py-4 flex items-center justify-center gap-2 text-slate-700 font-semibold active:scale-[0.98] transition"
+            className="w-full rounded-xl border border-slate-300 bg-white py-3 flex items-center justify-center gap-2 text-slate-700 font-semibold text-sm active:scale-[0.98] transition"
           >
             <Edit className="w-5 h-5" />
             Lançar nota manualmente
