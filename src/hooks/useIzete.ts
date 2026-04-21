@@ -10,14 +10,41 @@ export interface IzeteEvent {
   created_at: string
 }
 
-export function useIzete(monthStr: string) {
-  const qc = useQueryClient()
-  const [y, m] = monthStr.split('-').map(Number)
-  const start = new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10)
-  const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+// Shape from migrated izete_events table (legacy data import)
+export interface IzeteEventFull {
+  id: string
+  event_date: string
+  paid: boolean
+  paid_amount: number | null
+  created_at: string
+}
 
-  const q = useQuery({
-    queryKey: ['izete_events', monthStr],
+// Overload: no args → returns all events (IzeteEventFull[]) for the Zazá page
+export function useIzete(): ReturnType<typeof useQuery<IzeteEventFull[]>>
+// Overload: monthStr → returns month-filtered events (IzeteEvent[]) for the old calendar
+export function useIzete(monthStr: string): ReturnType<typeof useQuery<IzeteEvent[]>>
+export function useIzete(monthStr?: string): unknown {
+  const qc = useQueryClient()
+
+  const fullQuery = useQuery<IzeteEventFull[]>({
+    queryKey: ['izete_events_full'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('izete_events')
+        .select('*')
+        .order('event_date', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as IzeteEventFull[]
+    },
+    enabled: monthStr === undefined
+  })
+
+  const [y, m] = monthStr ? monthStr.split('-').map(Number) : [0, 0]
+  const start = monthStr ? new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10) : ''
+  const end = monthStr ? new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) : ''
+
+  const monthQuery = useQuery<IzeteEvent[]>({
+    queryKey: ['izete_events', monthStr ?? ''],
     queryFn: async (): Promise<IzeteEvent[]> => {
       const { data, error } = await supabase
         .from('izete_events')
@@ -26,10 +53,12 @@ export function useIzete(monthStr: string) {
         .lte('date', end)
       if (error) throw error
       return data ?? []
-    }
+    },
+    enabled: monthStr !== undefined
   })
 
   useEffect(() => {
+    if (monthStr === undefined) return
     const ch = supabase
       .channel(`izete-${monthStr}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'izete_events' }, () => {
@@ -39,7 +68,47 @@ export function useIzete(monthStr: string) {
     return () => { supabase.removeChannel(ch) }
   }, [qc, monthStr])
 
-  return q
+  return monthStr === undefined ? fullQuery : monthQuery
+}
+
+export function useToggleIzetePaid() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      paid,
+      amount,
+    }: {
+      id: string
+      paid: boolean
+      amount: number
+    }) => {
+      const { error } = await supabase
+        .from('izete_events')
+        .update({ paid, paid_amount: paid ? amount : 0 })
+        .eq('id', id)
+      if (error) throw error
+
+      if (paid) {
+        const { error: fe } = await supabase.from('finance_entries').insert({
+          type: 'expense',
+          amount,
+          category: 'diarista',
+          source: 'izete',
+          izete_event_id: id,
+          note: 'Diária Zazá'
+        })
+        if (fe) throw fe
+      } else {
+        await supabase.from('finance_entries').delete().eq('izete_event_id', id)
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['izete_events_full'] })
+      qc.invalidateQueries({ queryKey: ['izete_events'] })
+      qc.invalidateQueries({ queryKey: ['finance_entries'] })
+    }
+  })
 }
 
 export function useToggleIzeteDay() {
@@ -55,7 +124,6 @@ export function useToggleIzeteDay() {
       amount: number
     }) => {
       if (currentEvent) {
-        // Toggle paid flag
         const newPaid = !currentEvent.paid
         const { error } = await supabase
           .from('izete_events')
@@ -64,7 +132,6 @@ export function useToggleIzeteDay() {
         if (error) throw error
 
         if (newPaid) {
-          // Insert finance_entry
           const { error: fe } = await supabase.from('finance_entries').insert({
             type: 'expense',
             amount,
@@ -76,14 +143,12 @@ export function useToggleIzeteDay() {
           })
           if (fe) throw fe
         } else {
-          // Delete corresponding finance_entry
           await supabase
             .from('finance_entries')
             .delete()
             .eq('izete_event_id', currentEvent.id)
         }
       } else {
-        // Create new event as scheduled (unpaid)
         const { data: newEvent, error } = await supabase
           .from('izete_events')
           .insert({ date, paid: false, amount })
