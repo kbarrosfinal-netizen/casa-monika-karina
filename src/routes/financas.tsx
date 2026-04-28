@@ -67,7 +67,7 @@ function FinancasPage() {
         </div>
       </div>
 
-      {ticket.data && ticket.data.income > 0 && (
+      {ticket.data && (
         <div className="rounded-2xl p-4 text-white shadow-md" style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)' }}>
           <div className="flex items-center gap-2 mb-2">
             <Ticket className="w-5 h-5" />
@@ -164,7 +164,7 @@ function QuickEntryForm({ onSubmit, onCancel }: { onSubmit: (e: { type: 'income'
   const [submitting, setSubmitting] = useState(false)
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/40 z-[60] flex items-end" onClick={onCancel}>
       <form
         onClick={e => e.stopPropagation()}
         onSubmit={async e => {

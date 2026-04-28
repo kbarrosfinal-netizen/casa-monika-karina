@@ -55,7 +55,7 @@ function PetsPage() {
       <ul className="space-y-3">
         {pets?.map(pet => (
           <li key={pet.id} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
-            <span className="text-4xl">{pet.emoji}</span>
+            <span className="text-4xl">{pet.emoji || '🐾'}</span>
             <div className="flex-1 min-w-0">
               <p className="font-bold">{pet.name}</p>
               <p className="text-xs text-slate-500">{pet.species}{pet.birthdate ? ` · Nasc. ${new Date(pet.birthdate).toLocaleDateString('pt-BR')}` : ''}</p>
@@ -107,7 +107,7 @@ function PetModal({ pet, onSave, onClose }: {
   const [submitting, setSubmitting] = useState(false)
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 z-[60] flex items-end" onClick={onClose}>
       <form
         onClick={e => e.stopPropagation()}
         onSubmit={async e => {
@@ -126,7 +126,7 @@ function PetModal({ pet, onSave, onClose }: {
             setSubmitting(false)
           }
         }}
-        className="bg-white w-full rounded-t-2xl flex flex-col max-h-[90vh]"
+        className="bg-white w-full rounded-t-2xl flex flex-col h-[85dvh]"
       >
         <div className="px-5 pt-5 pb-3 border-b border-slate-100">
           <h3 className="text-lg font-bold">{pet ? 'Editar pet' : 'Novo pet'}</h3>
@@ -186,7 +186,7 @@ function PetModal({ pet, onSave, onClose }: {
           </label>
         </div>
 
-        <div className="flex gap-2 p-4 border-t border-slate-100 bg-white sticky bottom-0">
+        <div className="flex gap-2 p-4 border-t border-slate-100 bg-white shrink-0">
           <button
             type="button"
             onClick={onClose}

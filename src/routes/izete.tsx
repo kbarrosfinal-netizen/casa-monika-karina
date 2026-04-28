@@ -63,13 +63,14 @@ function ZazaPage() {
     return m
   }, [events.data])
 
-  // Totais 2026
+  // Totais do mês selecionado
   const totals = useMemo(() => {
-    const events2026 = (events.data ?? []).filter(e => e.event_date.startsWith('2026'))
-    const paid = events2026.filter(e => e.paid).length * valorPorVisita
-    const pending = events2026.filter(e => !e.paid).length * valorPorVisita
-    return { pending, paid, days: events2026.length }
-  }, [events.data, valorPorVisita])
+    const prefix = `2026-${String(monthIdx + 1).padStart(2, '0')}`
+    const monthEvents = (events.data ?? []).filter(e => e.event_date.startsWith(prefix))
+    const paid = monthEvents.filter(e => e.paid).length * valorPorVisita
+    const pending = monthEvents.filter(e => !e.paid).length * valorPorVisita
+    return { pending, paid, days: monthEvents.length }
+  }, [events.data, valorPorVisita, monthIdx])
 
   // Todas as terças do mês selecionado
   const tuesdaysOfMonth = useMemo(() => allTuesdaysOfMonth(2026, monthIdx), [monthIdx])

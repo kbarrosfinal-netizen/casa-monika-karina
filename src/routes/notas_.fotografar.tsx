@@ -6,7 +6,7 @@ import { useStores } from '@/hooks/useProducts'
 import { supabase } from '@/lib/supabase'
 import { Camera, ArrowLeft, CheckCircle2, AlertCircle, Edit, ImageIcon } from 'lucide-react'
 
-export const Route = createFileRoute('/notas/fotografar')({
+export const Route = createFileRoute('/notas_/fotografar')({
   component: FotografarPage
 })
 

@@ -19,8 +19,8 @@ import { Route as FinancasRouteImport } from './routes/financas'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NotasFotografarRouteImport } from './routes/notas.fotografar'
-import { Route as ComprasMercadoRouteImport } from './routes/compras.mercado'
+import { Route as NotasFotografarRouteImport } from './routes/notas_.fotografar'
+import { Route as ComprasMercadoRouteImport } from './routes/compras_.mercado'
 
 const PetsRoute = PetsRouteImport.update({
   id: '/pets',
@@ -73,25 +73,25 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotasFotografarRoute = NotasFotografarRouteImport.update({
-  id: '/fotografar',
-  path: '/fotografar',
-  getParentRoute: () => NotasRoute,
+  id: '/notas_/fotografar',
+  path: '/notas/fotografar',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ComprasMercadoRoute = ComprasMercadoRouteImport.update({
-  id: '/mercado',
-  path: '/mercado',
-  getParentRoute: () => ComprasRoute,
+  id: '/compras_/mercado',
+  path: '/compras/mercado',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRouteWithChildren
+  '/compras': typeof ComprasRoute
   '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRouteWithChildren
+  '/notas': typeof NotasRoute
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
@@ -99,13 +99,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRouteWithChildren
+  '/compras': typeof ComprasRoute
   '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRouteWithChildren
+  '/notas': typeof NotasRoute
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
@@ -114,17 +114,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/compras': typeof ComprasRouteWithChildren
+  '/compras': typeof ComprasRoute
   '/config': typeof ConfigRoute
   '/financas': typeof FinancasRoute
   '/instalar': typeof InstalarRoute
   '/izete': typeof IzeteRoute
   '/mais': typeof MaisRoute
-  '/notas': typeof NotasRouteWithChildren
+  '/notas': typeof NotasRoute
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
-  '/compras/mercado': typeof ComprasMercadoRoute
-  '/notas/fotografar': typeof NotasFotografarRoute
+  '/compras_/mercado': typeof ComprasMercadoRoute
+  '/notas_/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,21 +167,23 @@ export interface FileRouteTypes {
     | '/notas'
     | '/os'
     | '/pets'
-    | '/compras/mercado'
-    | '/notas/fotografar'
+    | '/compras_/mercado'
+    | '/notas_/fotografar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ComprasRoute: typeof ComprasRouteWithChildren
+  ComprasRoute: typeof ComprasRoute
   ConfigRoute: typeof ConfigRoute
   FinancasRoute: typeof FinancasRoute
   InstalarRoute: typeof InstalarRoute
   IzeteRoute: typeof IzeteRoute
   MaisRoute: typeof MaisRoute
-  NotasRoute: typeof NotasRouteWithChildren
+  NotasRoute: typeof NotasRoute
   OsRoute: typeof OsRoute
   PetsRoute: typeof PetsRoute
+  ComprasMercadoRoute: typeof ComprasMercadoRoute
+  NotasFotografarRoute: typeof NotasFotografarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -256,55 +258,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/notas/fotografar': {
-      id: '/notas/fotografar'
-      path: '/fotografar'
+    '/notas_/fotografar': {
+      id: '/notas_/fotografar'
+      path: '/notas/fotografar'
       fullPath: '/notas/fotografar'
       preLoaderRoute: typeof NotasFotografarRouteImport
-      parentRoute: typeof NotasRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/compras/mercado': {
-      id: '/compras/mercado'
-      path: '/mercado'
+    '/compras_/mercado': {
+      id: '/compras_/mercado'
+      path: '/compras/mercado'
       fullPath: '/compras/mercado'
       preLoaderRoute: typeof ComprasMercadoRouteImport
-      parentRoute: typeof ComprasRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface ComprasRouteChildren {
-  ComprasMercadoRoute: typeof ComprasMercadoRoute
-}
-
-const ComprasRouteChildren: ComprasRouteChildren = {
-  ComprasMercadoRoute: ComprasMercadoRoute,
-}
-
-const ComprasRouteWithChildren =
-  ComprasRoute._addFileChildren(ComprasRouteChildren)
-
-interface NotasRouteChildren {
-  NotasFotografarRoute: typeof NotasFotografarRoute
-}
-
-const NotasRouteChildren: NotasRouteChildren = {
-  NotasFotografarRoute: NotasFotografarRoute,
-}
-
-const NotasRouteWithChildren = NotasRoute._addFileChildren(NotasRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ComprasRoute: ComprasRouteWithChildren,
+  ComprasRoute: ComprasRoute,
   ConfigRoute: ConfigRoute,
   FinancasRoute: FinancasRoute,
   InstalarRoute: InstalarRoute,
   IzeteRoute: IzeteRoute,
   MaisRoute: MaisRoute,
-  NotasRoute: NotasRouteWithChildren,
+  NotasRoute: NotasRoute,
   OsRoute: OsRoute,
   PetsRoute: PetsRoute,
+  ComprasMercadoRoute: ComprasMercadoRoute,
+  NotasFotografarRoute: NotasFotografarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

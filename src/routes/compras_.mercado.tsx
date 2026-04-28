@@ -8,7 +8,7 @@ import { StoreSection } from '@/components/shopping/StoreSection'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import { buildWhatsAppMessage } from '@/lib/whatsapp'
 
-export const Route = createFileRoute('/compras/mercado')({
+export const Route = createFileRoute('/compras_/mercado')({
   component: MercadoPage
 })
 

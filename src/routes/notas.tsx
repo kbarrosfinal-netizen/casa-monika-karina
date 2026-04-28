@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useReceipts } from '@/hooks/useReceipts'
 import { Camera, Clock, CheckCircle2, XCircle } from 'lucide-react'
 
@@ -7,6 +7,7 @@ export const Route = createFileRoute('/notas')({
 })
 
 function NotasPage() {
+  const navigate = useNavigate()
   const { data: receipts, isLoading } = useReceipts()
 
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '--'
@@ -18,14 +19,15 @@ function NotasPage() {
           <h2 className="text-xl font-bold">Notas</h2>
           <p className="text-xs text-slate-500">Histórico de compras</p>
         </div>
-        <Link
-          to="/notas/fotografar"
-          className="flex items-center gap-1 py-2 px-3 rounded-xl text-white font-bold text-sm shadow-md"
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/notas/fotografar' })}
+          className="flex items-center gap-1 py-2 px-3 rounded-xl text-white font-bold text-sm shadow-md active:scale-[0.97] transition"
           style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)' }}
         >
           <Camera className="w-4 h-4" />
           Nova
-        </Link>
+        </button>
       </header>
 
       {isLoading && <p className="text-slate-500 text-sm">Carregando…</p>}

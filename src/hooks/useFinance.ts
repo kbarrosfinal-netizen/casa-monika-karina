@@ -63,10 +63,13 @@ export function useAddFinanceEntry() {
 }
 
 /**
- * Saldo do vale-refeição para o mês selecionado.
- * Receita = finance_entries com category='vale-refeicao' (income lançado no último dia do mês)
- * Gasto = receipts cujo ocr_json.forma inclui 'Ticket' (compras pagas com ticket)
- * Saldo = receita - gasto
+ * Saldo do vale-refeição do mês selecionado.
+ * Orçamento = settings.ticket_value (fixo por mês, independente de quando o auto-ticket lança)
+ * Gasto = receipts cujo ocr_json.forma inclui 'Ticket' no mês selecionado
+ * Saldo = orçamento - gasto
+ *
+ * Obs: o auto-ticket ainda lança a entrada no último dia do mês em finance_entries
+ * (pra bater com o extrato do banco), mas o card de saldo não depende disso.
  */
 export function useTicketBalance(monthStr: string) {
   const qc = useQueryClient()
@@ -75,16 +78,14 @@ export function useTicketBalance(monthStr: string) {
   const q = useQuery({
     queryKey: ['ticket_balance', monthStr],
     queryFn: async () => {
-      const { data: incomeRows, error: eIn } = await supabase
-        .from('finance_entries')
-        .select('amount')
-        .eq('category', 'vale-refeicao')
-        .eq('type', 'income')
-        .gte('date', start)
-        .lte('date', end)
-      if (eIn) throw eIn
+      const { data: settings, error: eS } = await supabase
+        .from('settings')
+        .select('ticket_value')
+        .eq('id', 'household')
+        .maybeSingle()
+      if (eS) throw eS
 
-      const income = (incomeRows ?? []).reduce((s, e) => s + Number(e.amount || 0), 0)
+      const budget = Number(settings?.ticket_value ?? 3000)
 
       const { data: receipts, error: eR } = await supabase
         .from('receipts')
@@ -100,14 +101,14 @@ export function useTicketBalance(monthStr: string) {
         })
         .reduce((s, r) => s + Number(r.total || 0), 0)
 
-      return { income, spent, remaining: income - spent }
+      return { income: budget, spent, remaining: budget - spent }
     }
   })
 
   useEffect(() => {
     const ch = supabase
       .channel(`ticket-${monthStr}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_entries' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
         qc.invalidateQueries({ queryKey: ['ticket_balance'] })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'receipts' }, () => {
