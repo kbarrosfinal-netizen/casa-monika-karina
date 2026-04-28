@@ -20,6 +20,7 @@ import { Route as ConfigRouteImport } from './routes/config'
 import { Route as ComprasRouteImport } from './routes/compras'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotasFotografarRouteImport } from './routes/notas_.fotografar'
+import { Route as ConfigDuplicatasRouteImport } from './routes/config_.duplicatas'
 import { Route as ComprasMercadoRouteImport } from './routes/compras_.mercado'
 
 const PetsRoute = PetsRouteImport.update({
@@ -77,6 +78,11 @@ const NotasFotografarRoute = NotasFotografarRouteImport.update({
   path: '/notas/fotografar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfigDuplicatasRoute = ConfigDuplicatasRouteImport.update({
+  id: '/config_/duplicatas',
+  path: '/config/duplicatas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComprasMercadoRoute = ComprasMercadoRouteImport.update({
   id: '/compras_/mercado',
   path: '/compras/mercado',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
+  '/config/duplicatas': typeof ConfigDuplicatasRoute
   '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
   '/compras/mercado': typeof ComprasMercadoRoute
+  '/config/duplicatas': typeof ConfigDuplicatasRoute
   '/notas/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/os': typeof OsRoute
   '/pets': typeof PetsRoute
   '/compras_/mercado': typeof ComprasMercadoRoute
+  '/config_/duplicatas': typeof ConfigDuplicatasRoute
   '/notas_/fotografar': typeof NotasFotografarRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pets'
     | '/compras/mercado'
+    | '/config/duplicatas'
     | '/notas/fotografar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pets'
     | '/compras/mercado'
+    | '/config/duplicatas'
     | '/notas/fotografar'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pets'
     | '/compras_/mercado'
+    | '/config_/duplicatas'
     | '/notas_/fotografar'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   OsRoute: typeof OsRoute
   PetsRoute: typeof PetsRoute
   ComprasMercadoRoute: typeof ComprasMercadoRoute
+  ConfigDuplicatasRoute: typeof ConfigDuplicatasRoute
   NotasFotografarRoute: typeof NotasFotografarRoute
 }
 
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotasFotografarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/config_/duplicatas': {
+      id: '/config_/duplicatas'
+      path: '/config/duplicatas'
+      fullPath: '/config/duplicatas'
+      preLoaderRoute: typeof ConfigDuplicatasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compras_/mercado': {
       id: '/compras_/mercado'
       path: '/compras/mercado'
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   OsRoute: OsRoute,
   PetsRoute: PetsRoute,
   ComprasMercadoRoute: ComprasMercadoRoute,
+  ConfigDuplicatasRoute: ConfigDuplicatasRoute,
   NotasFotografarRoute: NotasFotografarRoute,
 }
 export const routeTree = rootRouteImport

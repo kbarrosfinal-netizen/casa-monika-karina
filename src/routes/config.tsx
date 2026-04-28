@@ -259,6 +259,21 @@ function ConfigPage() {
           {enriching ? 'Processando…' : 'Rodar enriquecimento retroativo da lista mensal'}
         </button>
       </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+        <h3 className="font-bold text-slate-800">Limpar duplicatas</h3>
+        <p className="text-sm text-slate-500">
+          Mostra produtos com nomes parecidos no catálogo (ex: "Leite", "Leite Integral", "Leite Parmalat") e
+          permite mesclar — o histórico de preços e listas é preservado.
+        </p>
+        <button
+          onClick={() => navigate({ to: '/config/duplicatas' })}
+          className="w-full py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)' }}
+        >
+          Mesclar produtos duplicados
+        </button>
+      </div>
     </div>
   )
 }

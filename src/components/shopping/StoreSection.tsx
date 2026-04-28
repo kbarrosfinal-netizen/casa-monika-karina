@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import type { Store } from '@/lib/types'
 
 interface Item {
@@ -16,9 +17,10 @@ interface Props {
   total: number
   checked: Set<string>
   onCheck: (productId: string) => void
+  onRemove?: (productId: string, name: string) => void
 }
 
-export function StoreSection({ store, items, total, checked, onCheck }: Props) {
+export function StoreSection({ store, items, total, checked, onCheck, onRemove }: Props) {
   const color = store?.color ?? '#64748b'
   const label = store?.name ?? 'Sem preço registrado'
 
@@ -54,6 +56,16 @@ export function StoreSection({ store, items, total, checked, onCheck }: Props) {
                 {it.price !== null && ` · R$ ${it.price.toFixed(2)}`}
               </p>
             </div>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={() => onRemove(it.productId, it.name)}
+                aria-label={`Remover ${it.name} da lista`}
+                className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </li>
         ))}
       </ul>

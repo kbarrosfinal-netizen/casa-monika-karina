@@ -7,9 +7,10 @@ interface Props {
   products: Product[]
   shoppingList: ShoppingListItem[]
   onToggle: (productId: string, next: boolean) => void
+  onLongPress?: (product: Product) => void
 }
 
-export function CategoryGrid({ categories, products, shoppingList, onToggle }: Props) {
+export function CategoryGrid({ categories, products, shoppingList, onToggle, onLongPress }: Props) {
   const missingIds = useMemo(
     () => new Set(shoppingList.filter(i => i.is_missing).map(i => i.product_id)),
     [shoppingList]
@@ -38,6 +39,7 @@ export function CategoryGrid({ categories, products, shoppingList, onToggle }: P
                 product={product}
                 isMissing={missingIds.has(product.id)}
                 onToggle={() => onToggle(product.id, !missingIds.has(product.id))}
+                onLongPress={onLongPress}
               />
             ))}
           </div>

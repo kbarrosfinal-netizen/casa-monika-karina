@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useProducts, useCategories } from '@/hooks/useProducts'
+import { useProducts, useCategories, useDeleteProduct } from '@/hooks/useProducts'
 import { useShoppingList, useToggleMissing } from '@/hooks/useShoppingList'
 import { useMonthlyList, useAcceptMonthlyItem, useRemoveMonthlyItem } from '@/hooks/useMonthlyList'
 import { CategoryGrid } from '@/components/shopping/CategoryGrid'
 import { NewProductModal } from '@/components/shopping/NewProductModal'
 import { cn } from '@/lib/cn'
 import type { Product, Category, MonthlyListItem, ShoppingListItem } from '@/lib/types'
-import { ShoppingBag, Plus, Send } from 'lucide-react'
+import { ShoppingBag, Plus, Send, X } from 'lucide-react'
 
 export const Route = createFileRoute('/compras')({
   component: ComprasPage
@@ -64,6 +64,16 @@ function MonthlyListView({
                   <span className="text-xl">{p.icon}</span>
                   <span className="flex-1 text-sm">{p.name}</span>
                   <span className="text-xs text-slate-400">{item.quantity} {p.unit}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Remover ${p.name} da lista do mês?`)) onRemove(item.id)
+                    }}
+                    aria-label={`Remover ${p.name}`}
+                    className="p-1.5 -mr-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </li>
               )
             })}
@@ -84,6 +94,7 @@ function ComprasPage() {
   const monthly = useMonthlyList()
   const accept = useAcceptMonthlyItem()
   const remove = useRemoveMonthlyItem()
+  const deleteProduct = useDeleteProduct()
 
   const missingCount = shoppingList.data?.filter(i => i.is_missing).length ?? 0
   const month = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -168,6 +179,11 @@ function ComprasPage() {
             products={products.data ?? []}
             shoppingList={shoppingList.data ?? []}
             onToggle={(productId, next) => toggle.mutate({ productId, isMissing: next })}
+            onLongPress={(p) => {
+              if (window.confirm(`Apagar "${p.name}" do catálogo? Isso remove o produto de todas as listas e do histórico de preços. Esta ação não pode ser desfeita.`)) {
+                deleteProduct.mutate(p.id)
+              }
+            }}
           />
         </>
       )}

@@ -3,21 +3,31 @@ import type { Context } from '@netlify/functions'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 
-const PROMPT = `Analise esta nota fiscal de supermercado brasileira. Extraia em JSON estrito:
+const SYSTEM_PROMPT = `Você lê notas fiscais brasileiras e extrai dados em JSON estrito.
 
+Formato de resposta:
 {
   "store": "nome da loja (ex: Supermercados DB, Mercantil Nova Era)",
   "date": "YYYY-MM-DD",
   "total": número (valor total pago),
   "items": [
-    { "name": "nome do produto normalizado (ex: 'Leite Parmalat 1L' -> 'Leite')", "quantity": número, "unit_price": número, "total_price": número }
+    { "name": "nome canônico curto", "quantity": número, "unit_price": número, "total_price": número }
   ]
 }
 
-Regras:
-- Normaliza nomes (remove marcas/tamanhos quando possível, mantém categoria: "Leite" não "Leite Parmalat 1L").
-- Se um campo não aparece, usa null (não invente).
-- Responda APENAS o JSON puro, sem markdown, sem comentários.`
+REGRAS DE NORMALIZAÇÃO DE NOMES (críticas — evite duplicatas no banco):
+- Use apenas o nome genérico do produto, em singular, capitalizado.
+  ✓ "Leite"  ✗ "Leite Parmalat 1L"  ✗ "LEITE INTEGRAL UHT"  ✗ "Leite integral"
+  ✓ "Pão"    ✗ "Pão Francês 50g"    ✗ "PÃES"
+  ✓ "Arroz"  ✗ "Arroz Tio João 5kg" ✗ "Arroz integral"
+- NUNCA repita marcas (Parmalat, Tio João, Nestlé, Bauducco, Sadia, etc).
+- NUNCA inclua tamanhos ou unidades de embalagem (1L, 500g, 5kg, 12un).
+- NUNCA inclua adjetivos de variedade que duplicariam itens (integral, desnatado, branco, light) a menos que sejam categorias completamente diferentes (ex: "Carne moída" vs "Carne em peça" → use "Carne").
+- Plurais → singular ("Bananas" → "Banana", "Maçãs" → "Maçã").
+- Capitalize apenas a primeira letra ("Leite", "Açúcar", "Café").
+
+Se um campo não aparece, use null. NUNCA invente dados.
+Responda APENAS o JSON puro, sem markdown, sem comentários, sem texto antes ou depois.`
 
 export default async (req: Request, _ctx: Context) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
@@ -31,30 +41,42 @@ export default async (req: Request, _ctx: Context) => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? Netlify.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const anthropicKey = process.env.ANTHROPIC_API_KEY ?? Netlify.env.get('ANTHROPIC_API_KEY')
 
-  if (!supabaseUrl || !serviceKey || !anthropicKey) {
-    return new Response(JSON.stringify({ error: 'env vars ausentes no servidor' }), { status: 500 })
+  const missing: string[] = []
+  if (!supabaseUrl) missing.push('SUPABASE_URL')
+  if (!serviceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+  if (!anthropicKey) missing.push('ANTHROPIC_API_KEY')
+  if (missing.length > 0) {
+    return new Response(
+      JSON.stringify({ error: `Variáveis de ambiente faltando no servidor Netlify: ${missing.join(', ')}` }),
+      { status: 500 }
+    )
   }
 
-  const sb = createClient(supabaseUrl, serviceKey)
-  const anthropic = new Anthropic({ apiKey: anthropicKey })
+  const sb = createClient(supabaseUrl!, serviceKey!)
+  const anthropic = new Anthropic({ apiKey: anthropicKey! })
 
   try {
-    // Download image from Supabase Storage
     const imgRes = await fetch(photo_url)
-    if (!imgRes.ok) throw new Error(`Falha ao baixar imagem: ${imgRes.status}`)
+    if (!imgRes.ok) throw new Error(`Falha ao baixar imagem do storage (HTTP ${imgRes.status})`)
     const arrayBuf = await imgRes.arrayBuffer()
     const base64 = Buffer.from(arrayBuf).toString('base64')
     const mediaType = imgRes.headers.get('content-type') || 'image/jpeg'
 
-    // Call Claude Vision
     const resp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
+      system: [
+        {
+          type: 'text',
+          text: SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 } },
-          { type: 'text', text: PROMPT }
+          { type: 'text', text: 'Extraia os dados desta nota.' }
         ]
       }]
     })
@@ -65,10 +87,9 @@ export default async (req: Request, _ctx: Context) => {
     try {
       parsed = JSON.parse(cleaned)
     } catch (e) {
-      throw new Error(`JSON parse failed: ${(e as Error).message}. Raw: ${raw.slice(0, 200)}`)
+      throw new Error(`O modelo não retornou JSON válido. Tente novamente ou lance manualmente. (${(e as Error).message}; raw: ${raw.slice(0, 120)})`)
     }
 
-    // Match/create store
     let storeId: string | null = null
     if (parsed.store) {
       const { data: existingStores } = await sb.from('stores').select('id,name').ilike('name', `%${parsed.store}%`).limit(1)
@@ -80,7 +101,6 @@ export default async (req: Request, _ctx: Context) => {
       }
     }
 
-    // Update receipt
     await sb.from('receipts').update({
       store_id: storeId,
       total: parsed.total ?? null,
@@ -90,25 +110,52 @@ export default async (req: Request, _ctx: Context) => {
       status: 'done'
     }).eq('id', receipt_id)
 
-    // Upsert products and create receipt_items + product_prices
     const { data: productsAll } = await sb.from('products').select('id,name')
-    const productByName = new Map<string, string>()
-    productsAll?.forEach(p => productByName.set(normalize(p.name), p.id))
+    const productByExactKey = new Map<string, string>()
+    const productByToken = new Map<string, { id: string; name: string }[]>()
+    for (const p of productsAll ?? []) {
+      const exact = normalize(p.name)
+      productByExactKey.set(exact, p.id)
+      const token = mainToken(p.name)
+      if (token) {
+        const list = productByToken.get(token) ?? []
+        list.push({ id: p.id, name: p.name })
+        productByToken.set(token, list)
+      }
+    }
 
     const monthStart = parsed.date
       ? new Date(parsed.date).toISOString().slice(0, 8) + '01'
       : new Date().toISOString().slice(0, 8) + '01'
 
     for (const item of parsed.items ?? []) {
-      let productId = productByName.get(normalize(item.name))
+      let productId = productByExactKey.get(normalize(item.name))
+
       if (!productId) {
+        const token = mainToken(item.name)
+        const candidates = token ? productByToken.get(token) ?? [] : []
+        if (candidates.length === 1) {
+          productId = candidates[0].id
+        }
+      }
+
+      if (!productId) {
+        const display = canonicalName(item.name)
         const { data: newProduct } = await sb.from('products').insert({
-          name: item.name,
-          icon: guessIcon(item.name),
+          name: display,
+          icon: guessIcon(display),
           unit: 'un'
         }).select().single()
         productId = newProduct?.id
-        if (productId) productByName.set(normalize(item.name), productId)
+        if (productId) {
+          productByExactKey.set(normalize(display), productId)
+          const tk = mainToken(display)
+          if (tk) {
+            const list = productByToken.get(tk) ?? []
+            list.push({ id: productId, name: display })
+            productByToken.set(tk, list)
+          }
+        }
       }
 
       if (productId) {
@@ -131,7 +178,6 @@ export default async (req: Request, _ctx: Context) => {
           })
         }
 
-        // Ensure it's in monthly_list (not as suggested)
         const { data: existingMonth } = await sb
           .from('monthly_list')
           .select('id')
@@ -151,7 +197,6 @@ export default async (req: Request, _ctx: Context) => {
       }
     }
 
-    // Create finance entry for the total
     if (parsed.total) {
       await sb.from('finance_entries').insert({
         type: 'expense',
@@ -164,12 +209,9 @@ export default async (req: Request, _ctx: Context) => {
       })
     }
 
-    // Trigger suggestions enrichment (simple: based on 3-month frequency)
     await enrichMonthlySuggestions(sb, monthStart)
 
-    // Delete photo from Supabase Storage after successful processing
     try {
-      // photo_url format: https://<ref>.supabase.co/storage/v1/object/public/receipts/<path>
       const storageMarker = '/storage/v1/object/public/receipts/'
       const markerIdx = photo_url.indexOf(storageMarker)
       if (markerIdx !== -1) {
@@ -181,19 +223,40 @@ export default async (req: Request, _ctx: Context) => {
       console.warn('ocr-receipt: failed to delete photo (non-fatal)', delErr)
     }
 
-    return new Response(JSON.stringify({ ok: true, items: parsed.items?.length ?? 0, total: parsed.total }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      items: parsed.items?.length ?? 0,
+      total: parsed.total,
+      cache_read: resp.usage?.cache_read_input_tokens ?? 0,
+      cache_write: resp.usage?.cache_creation_input_tokens ?? 0
+    }), {
       status: 200,
       headers: { 'content-type': 'application/json' }
     })
   } catch (err) {
+    const msg = (err as Error).message
     console.error('ocr-receipt error', err)
-    await sb.from('receipts').update({ status: 'failed', ocr_raw: String((err as Error).message) }).eq('id', receipt_id)
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500 })
+    await sb.from('receipts').update({ status: 'failed', ocr_raw: msg }).eq('id', receipt_id)
+    return new Response(JSON.stringify({ error: msg }), { status: 500 })
   }
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
+
+function mainToken(s: string): string {
+  const n = normalize(s)
+  const skip = new Set(['de', 'do', 'da', 'em', 'com', 'sem', 'pra', 'para', 'kg', 'g', 'ml', 'l', 'un', 'cx', 'pct'])
+  const tokens = n.split(/[\s\-/]+/).filter(t => t.length >= 3 && !skip.has(t) && !/^\d+$/.test(t))
+  return tokens[0] ?? ''
+}
+
+function canonicalName(raw: string): string {
+  const cleaned = raw.trim().replace(/\s+/g, ' ')
+  const noBrand = cleaned.replace(/\b\d+(?:[,.]\d+)?\s?(?:kg|g|ml|l|un|cx|pct)\b/gi, '').trim()
+  const first = noBrand.split(/\s+/)[0] ?? cleaned
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
 
 function guessIcon(name: string): string {
@@ -213,10 +276,15 @@ function guessIcon(name: string): string {
   if (n.includes('cafe') || n.includes('café')) return '☕'
   if (n.includes('acucar') || n.includes('açúcar')) return '🍬'
   if (n.includes('oleo') || n.includes('óleo')) return '🛢️'
+  if (n.includes('banana')) return '🍌'
+  if (n.includes('maca') || n.includes('maçã')) return '🍎'
+  if (n.includes('tomate')) return '🍅'
+  if (n.includes('cebola')) return '🧅'
+  if (n.includes('batata')) return '🥔'
   return '🛒'
 }
 
-async function enrichMonthlySuggestions(sb: ReturnType<typeof createClient>, currentMonth: string) {
+async function enrichMonthlySuggestions(sb: any, currentMonth: string) {
   const { data: historical } = await sb
     .from('receipt_items')
     .select('product_id, receipts!inner(purchased_at)')
@@ -242,7 +310,7 @@ async function enrichMonthlySuggestions(sb: ReturnType<typeof createClient>, cur
     .select('product_id')
     .eq('month', currentMonth)
 
-  const existingIds = new Set((alreadyInMonth ?? []).map(r => r.product_id))
+  const existingIds = new Set((alreadyInMonth ?? []).map((r: { product_id: string }) => r.product_id))
   const toInsert = candidates
     .filter(id => !existingIds.has(id))
     .map(productId => ({

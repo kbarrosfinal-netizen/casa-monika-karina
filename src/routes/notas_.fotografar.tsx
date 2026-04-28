@@ -135,13 +135,22 @@ function FotografarPage() {
                 <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
                 <p className="text-sm text-rose-900 font-semibold">Falha ao processar</p>
               </div>
-              <p className="text-xs text-rose-700">{(upload.error as Error).message}</p>
-              <button
-                onClick={() => setMode('manual')}
-                className="text-xs underline text-rose-700 font-bold"
-              >
-                Lançar manualmente →
-              </button>
+              <p className="text-xs text-rose-700 break-words">{(upload.error as Error).message}</p>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={onSubmit}
+                  disabled={upload.isPending}
+                  className="text-xs underline text-rose-900 font-bold"
+                >
+                  Tentar de novo
+                </button>
+                <button
+                  onClick={() => setMode('manual')}
+                  className="text-xs underline text-rose-700 font-bold"
+                >
+                  Lançar manualmente →
+                </button>
+              </div>
             </div>
           )}
           <div className="flex gap-2">

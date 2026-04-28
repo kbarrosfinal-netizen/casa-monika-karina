@@ -101,6 +101,11 @@ function MercadoPage() {
                 total={g.total}
                 checked={checked}
                 onCheck={onCheck}
+                onRemove={(productId, name) => {
+                  if (window.confirm(`Remover ${name} da lista de faltando?`)) {
+                    toggle.mutate({ productId, isMissing: false })
+                  }
+                }}
               />
             ))}
           </div>
