@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useReceipts } from '@/hooks/useReceipts'
+import { ReceiptDetailModal } from '@/components/ReceiptDetailModal'
 import { Camera, Clock, CheckCircle2, XCircle } from 'lucide-react'
 
 export const Route = createFileRoute('/notas')({
@@ -9,6 +11,7 @@ export const Route = createFileRoute('/notas')({
 function NotasPage() {
   const navigate = useNavigate()
   const { data: receipts, isLoading } = useReceipts()
+  const [openId, setOpenId] = useState<string | null>(null)
 
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '--'
 
@@ -43,31 +46,45 @@ function NotasPage() {
       {receipts && receipts.length > 0 && (
         <ul className="space-y-2">
           {receipts.map(r => (
-            <li key={r.id} className="bg-white rounded-2xl border border-slate-200 p-3 flex gap-3">
-              <img
-                src={r.photo_url}
-                alt="Nota"
-                className="w-16 h-16 object-cover rounded-lg shrink-0 bg-slate-100"
-                loading="lazy"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm" style={{ color: r.store?.color ?? '#0f172a' }}>
-                  {r.store?.name ?? 'Processando…'}
-                </p>
-                <p className="text-xs text-slate-500">{fmtDate(r.purchased_at ?? r.created_at)}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-extrabold">{r.total ? `R$ ${r.total.toFixed(2)}` : '—'}</p>
-                <div className="flex items-center justify-end gap-1 text-[10px] mt-1">
-                  {r.status === 'processing' && <><Clock className="w-3 h-3 text-amber-500" /><span className="text-amber-600">processando</span></>}
-                  {r.status === 'done' && <><CheckCircle2 className="w-3 h-3 text-emerald-500" /><span className="text-emerald-600">ok</span></>}
-                  {r.status === 'failed' && <><XCircle className="w-3 h-3 text-rose-500" /><span className="text-rose-600">falha</span></>}
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => setOpenId(r.id)}
+                className="w-full bg-white rounded-2xl border border-slate-200 p-3 flex gap-3 text-left active:scale-[0.99] transition hover:border-slate-300"
+              >
+                {r.photo_url ? (
+                  <img
+                    src={r.photo_url}
+                    alt="Nota"
+                    className="w-16 h-16 object-cover rounded-lg shrink-0 bg-slate-100"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg shrink-0 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-medium">
+                    sem foto
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm truncate" style={{ color: r.store?.color ?? '#0f172a' }}>
+                    {r.store?.name ?? 'Processando…'}
+                  </p>
+                  <p className="text-xs text-slate-500">{fmtDate(r.purchased_at ?? r.created_at)}</p>
                 </div>
-              </div>
+                <div className="text-right shrink-0">
+                  <p className="font-extrabold tabular-nums">{r.total ? `R$ ${r.total.toFixed(2)}` : '—'}</p>
+                  <div className="flex items-center justify-end gap-1 text-[10px] mt-1">
+                    {r.status === 'processing' && <><Clock className="w-3 h-3 text-amber-500" /><span className="text-amber-600">processando</span></>}
+                    {r.status === 'done' && <><CheckCircle2 className="w-3 h-3 text-emerald-500" /><span className="text-emerald-600">ok</span></>}
+                    {r.status === 'failed' && <><XCircle className="w-3 h-3 text-rose-500" /><span className="text-rose-600">falha</span></>}
+                  </div>
+                </div>
+              </button>
             </li>
           ))}
         </ul>
       )}
+
+      <ReceiptDetailModal receiptId={openId} onClose={() => setOpenId(null)} />
     </div>
   )
 }
