@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useProducts, useCategories, useDeleteProduct } from '@/hooks/useProducts'
-import { useShoppingList, useToggleMissing } from '@/hooks/useShoppingList'
+import { useShoppingList, useToggleMissing, useDeleteShoppingItem } from '@/hooks/useShoppingList'
 import { useMonthlyList, useAcceptMonthlyItem, useRemoveMonthlyItem } from '@/hooks/useMonthlyList'
 import { CategoryGrid } from '@/components/shopping/CategoryGrid'
+import { MissingList } from '@/components/shopping/MissingList'
 import { NewProductModal } from '@/components/shopping/NewProductModal'
 import { cn } from '@/lib/cn'
 import type { Product, Category, MonthlyListItem, ShoppingListItem } from '@/lib/types'
@@ -91,6 +92,7 @@ function ComprasPage() {
   const categories = useCategories()
   const shoppingList = useShoppingList()
   const toggle = useToggleMissing()
+  const deleteShopping = useDeleteShoppingItem()
   const monthly = useMonthlyList()
   const accept = useAcceptMonthlyItem()
   const remove = useRemoveMonthlyItem()
@@ -173,6 +175,16 @@ function ComprasPage() {
               </Link>
             </div>
           )}
+
+          <MissingList
+            products={products.data ?? []}
+            shoppingList={shoppingList.data ?? []}
+            onDelete={(productId, name) => {
+              if (window.confirm(`Remover "${name}" da lista de faltando?`)) {
+                deleteShopping.mutate(productId)
+              }
+            }}
+          />
 
           <CategoryGrid
             categories={categories.data ?? []}

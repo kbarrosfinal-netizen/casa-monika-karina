@@ -28,16 +28,23 @@ export function useShoppingList() {
   return query
 }
 
+/**
+ * Toggle ou cria entrada de shopping_list por product_id.
+ * Robusto a múltiplas linhas (após drop do unique em 0005): pega a mais recente.
+ */
 export function useToggleMissing() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ productId, isMissing }: { productId: string; isMissing: boolean }) => {
-      const { data: existing } = await supabase
+      const { data: rows, error: selErr } = await supabase
         .from('shopping_list')
-        .select('*')
+        .select('id')
         .eq('product_id', productId)
-        .maybeSingle()
+        .order('added_at', { ascending: false })
+        .limit(1)
+      if (selErr) throw selErr
 
+      const existing = rows?.[0]
       if (existing) {
         const { error } = await supabase
           .from('shopping_list')
@@ -73,5 +80,35 @@ export function useToggleMissing() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(['shopping_list'], ctx.prev)
     }
+  })
+}
+
+/**
+ * DELETE definitivo da shopping_list (todas as linhas do produto).
+ * Diferente do toggle: remove a entrada inteira do banco.
+ */
+export function useDeleteShoppingItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      const { error } = await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('product_id', productId)
+      if (error) throw error
+    },
+    onMutate: async (productId) => {
+      await qc.cancelQueries({ queryKey: ['shopping_list'] })
+      const prev = qc.getQueryData<ShoppingListItem[]>(['shopping_list'])
+      qc.setQueryData<ShoppingListItem[]>(
+        ['shopping_list'],
+        (old = []) => old.filter(i => i.product_id !== productId)
+      )
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['shopping_list'], ctx.prev)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['shopping_list'] })
   })
 }
