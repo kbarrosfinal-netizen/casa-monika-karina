@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { X, Calendar, Store as StoreIcon, CreditCard, Package } from 'lucide-react'
+import { X, Calendar, Store as StoreIcon, CreditCard, Package, Trash2 } from 'lucide-react'
 import { useReceiptDetail } from '@/hooks/useReceiptDetail'
+import { useDeleteReceipt } from '@/hooks/useDeleteReceipt'
 
 interface Props {
   receiptId: string | null
@@ -14,6 +15,17 @@ function brl(n: number | null | undefined) {
 
 export function ReceiptDetailModal({ receiptId, onClose }: Props) {
   const { data, isLoading, error } = useReceiptDetail(receiptId)
+  const del = useDeleteReceipt()
+
+  const onDelete = () => {
+    if (!data) return
+    const label = data.store?.name ? ` de ${data.store.name}` : ''
+    if (!window.confirm(`Apagar essa nota${label}? Vai remover a foto, os itens e o lançamento financeiro vinculado. Não pode ser desfeito.`)) return
+    del.mutate(
+      { id: data.id, photoUrl: data.photo_url },
+      { onSuccess: () => onClose() }
+    )
+  }
 
   useEffect(() => {
     if (!receiptId) return
@@ -39,13 +51,24 @@ export function ReceiptDetailModal({ receiptId, onClose }: Props) {
         className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <header className="px-4 py-3 flex items-center justify-between border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
-          <h2 className="font-bold text-base">Detalhe da nota</h2>
+        <header className="px-4 py-3 flex items-center justify-between gap-2 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+          <h2 className="font-bold text-base flex-1">Detalhe da nota</h2>
+          {data && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={del.isPending}
+              aria-label="Apagar nota"
+              className="p-2 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 disabled:opacity-50"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="p-1 -mr-1 rounded-md text-slate-400 hover:text-slate-700 active:scale-90"
+            className="p-2 rounded-md text-slate-400 hover:text-slate-700 active:scale-90"
           >
             <X className="w-5 h-5" />
           </button>
