@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { X, Calendar, Store as StoreIcon, CreditCard, Package, Trash2 } from 'lucide-react'
 import { useReceiptDetail } from '@/hooks/useReceiptDetail'
 import { useDeleteReceipt } from '@/hooks/useDeleteReceipt'
+import { useUpdateReceiptForma } from '@/hooks/useUpdateReceiptForma'
+
+const FORMA_OPTIONS = ['Ticket', 'Débito', 'Crédito', 'Dinheiro', 'Pix'] as const
 
 interface Props {
   receiptId: string | null
@@ -16,6 +19,7 @@ function brl(n: number | null | undefined) {
 export function ReceiptDetailModal({ receiptId, onClose }: Props) {
   const { data, isLoading, error } = useReceiptDetail(receiptId)
   const del = useDeleteReceipt()
+  const updateForma = useUpdateReceiptForma()
 
   const onDelete = () => {
     if (!data) return
@@ -93,12 +97,28 @@ export function ReceiptDetailModal({ receiptId, onClose }: Props) {
                     ? new Date(data.purchased_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
                     : '—'}
                 </div>
-                {data.ocr_json?.forma && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <CreditCard className="w-4 h-4 text-slate-400" />
-                    {data.ocr_json.forma}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <CreditCard className="w-4 h-4 text-slate-400 shrink-0" />
+                  <select
+                    value={data.ocr_json?.forma ?? ''}
+                    disabled={updateForma.isPending}
+                    onChange={(e) => {
+                      const v = e.target.value || null
+                      updateForma.mutate({
+                        id: data.id,
+                        forma: v,
+                        storeName: data.store?.name ?? null
+                      })
+                    }}
+                    className="text-sm font-medium border border-slate-200 rounded-md px-2 py-1 bg-white disabled:opacity-50 flex-1"
+                    aria-label="Forma de pagamento"
+                  >
+                    <option value="">— forma de pagamento —</option>
+                    {FORMA_OPTIONS.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex items-baseline justify-between pt-2 border-t border-slate-100">
                   <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Total</span>
                   <span className="text-xl font-extrabold tabular-nums">{brl(data.total)}</span>

@@ -10,10 +10,19 @@ Formato de resposta:
   "store": "nome da loja (ex: Supermercados DB, Mercantil Nova Era)",
   "date": "YYYY-MM-DD",
   "total": número (valor total pago),
+  "forma": "Ticket" | "Débito" | "Crédito" | "Dinheiro" | "Pix" | null,
   "items": [
     { "name": "nome canônico curto", "quantity": número, "unit_price": número, "total_price": número }
   ]
 }
+
+REGRAS PARA "forma" (forma de pagamento):
+- Procure no rodapé do cupom termos como: "TICKET", "VR", "VR ALIMENTACAO", "VALE-REFEICAO", "ALELO", "SODEXO", "TICKET LOG", "BEN VISA VALE" → use "Ticket"
+- "DEBITO", "DEBITO MASTER", "DEBITO ELO", "ELECTRON" → use "Débito"
+- "CREDITO", "CREDITO VISA", "CREDIARIO" → use "Crédito"
+- "DINHEIRO", "ESPECIE", "TROCO" → use "Dinheiro"
+- "PIX", "QR PIX", "TRANSFERENCIA INSTANTANEA" → use "Pix"
+- Se não conseguir identificar com confiança, use null. NUNCA invente.
 
 REGRAS DE NORMALIZAÇÃO DE NOMES (críticas — evite duplicatas no banco):
 - Use apenas o nome genérico do produto, em singular, capitalizado.
@@ -92,7 +101,7 @@ export default async (req: Request, _ctx: Context) => {
 
     const raw = resp.content.map(c => c.type === 'text' ? c.text : '').join('').trim()
     const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
-    let parsed: { store?: string; date?: string; total?: number; items?: Array<{ name: string; quantity: number; unit_price: number; total_price: number }> }
+    let parsed: { store?: string; date?: string; total?: number; forma?: string | null; items?: Array<{ name: string; quantity: number; unit_price: number; total_price: number }> }
     try {
       parsed = JSON.parse(cleaned)
     } catch (e) {
@@ -207,6 +216,7 @@ export default async (req: Request, _ctx: Context) => {
     }
 
     if (parsed.total) {
+      const noteParts = [parsed.store, parsed.forma].filter(Boolean)
       await sb.from('finance_entries').insert({
         type: 'expense',
         amount: parsed.total,
@@ -214,7 +224,7 @@ export default async (req: Request, _ctx: Context) => {
         source: 'receipt',
         receipt_id,
         date: parsed.date ?? new Date().toISOString().slice(0, 10),
-        note: parsed.store ?? null
+        note: noteParts.length > 0 ? noteParts.join(' — ') : null
       })
     }
 
