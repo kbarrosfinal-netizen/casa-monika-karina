@@ -191,8 +191,8 @@ function ComprasPage() {
             products={products.data ?? []}
             shoppingList={shoppingList.data ?? []}
             onToggle={(productId, next) => toggle.mutate({ productId, isMissing: next })}
-            onLongPress={(p) => {
-              if (window.confirm(`Apagar "${p.name}" do catálogo? Isso remove o produto de todas as listas e do histórico de preços. Esta ação não pode ser desfeita.`)) {
+            onDelete={(p) => {
+              if (window.confirm(`Apagar "${p.name}" do catálogo? Remove o produto de todas as listas e do histórico de preços. Não pode ser desfeito.`)) {
                 deleteProduct.mutate(p.id)
               }
             }}
