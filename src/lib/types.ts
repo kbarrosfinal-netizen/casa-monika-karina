@@ -27,6 +27,9 @@ export interface ShoppingListItem {
   quantity: number
   added_at: string
   added_by: string | null
+  updated_at?: string
+  notes?: string | null
+  priority?: number
 }
 
 export interface MonthlyListItem {

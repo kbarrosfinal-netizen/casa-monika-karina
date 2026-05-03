@@ -10,6 +10,8 @@ export interface Pet {
   birthdate: string | null
   notes: string | null
   created_at: string
+  next_vet_visit?: string | null
+  next_vaccine?: string | null
 }
 
 export function usePets() {
