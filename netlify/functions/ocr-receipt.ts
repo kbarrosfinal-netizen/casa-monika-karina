@@ -52,6 +52,15 @@ export default async (req: Request, _ctx: Context) => {
     )
   }
 
+  // Sanity check: SUPABASE_SERVICE_ROLE_KEY tem que ser realmente o service_role.
+  // É comum colar a chave anon por engano (botões parecidos no painel) — RLS então bloqueia inserts.
+  const keyRole = jwtRole(serviceKey!)
+  if (keyRole !== 'service_role') {
+    return new Response(JSON.stringify({
+      error: `SUPABASE_SERVICE_ROLE_KEY tem role="${keyRole ?? 'desconhecido'}" — esperado "service_role". Vá em Supabase dashboard → Settings → API e copie a chave "service_role secret" (não a "anon public").`
+    }), { status: 500 })
+  }
+
   const sb = createClient(supabaseUrl!, serviceKey!)
   const anthropic = new Anthropic({ apiKey: anthropicKey! })
 
@@ -238,6 +247,18 @@ export default async (req: Request, _ctx: Context) => {
     console.error('ocr-receipt error', err)
     await sb.from('receipts').update({ status: 'failed', ocr_raw: msg }).eq('id', receipt_id)
     return new Response(JSON.stringify({ error: msg }), { status: 500 })
+  }
+}
+
+function jwtRole(jwt: string): string | null {
+  try {
+    const payload = jwt.split('.')[1]
+    if (!payload) return null
+    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+    const decoded = JSON.parse(json) as { role?: string }
+    return decoded.role ?? null
+  } catch {
+    return null
   }
 }
 
